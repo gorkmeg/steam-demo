@@ -2,6 +2,7 @@ package com.steampowered.steam_demo.controller;
 
 import com.steampowered.steam_demo.dto.request.LoginRequest;
 import com.steampowered.steam_demo.dto.request.RegisterRequest;
+import com.steampowered.steam_demo.dto.response.LoginResponse;
 import com.steampowered.steam_demo.dto.response.UserResponse;
 import com.steampowered.steam_demo.entity.User;
 import com.steampowered.steam_demo.mapper.UserMapper;
@@ -25,8 +26,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public UserResponse login(@RequestBody LoginRequest loginRequest) {
-        User loggedInUser = userService.login(loginRequest);
-        return userMapper.toResponse(loggedInUser);
+    public LoginResponse login(@RequestBody LoginRequest loginRequest) {
+        return userService.login(loginRequest);
     }
 }
