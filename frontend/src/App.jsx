@@ -27,14 +27,29 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [authInfo, setAuthInfo] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem("auth_token") || "");
 
   const hasGames = useMemo(() => games.length > 0, [games.length]);
 
+  function authHeaders() {
+    if (!token) {
+      return {};
+    }
+    return { Authorization: `Bearer ${token}` };
+  }
+
   async function loadGames() {
+    if (!token) {
+      setGames([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setGameError("");
     try {
-      const response = await fetch("/api/games");
+      const response = await fetch("/api/games", {
+        headers: authHeaders()
+      });
       if (!response.ok) {
         throw new Error(`Failed to load games (${response.status})`);
       }
@@ -48,11 +63,19 @@ function App() {
   }
 
   useEffect(() => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     loadGames();
-  }, []);
+  }, [token]);
 
   async function handleCreateGame(event) {
     event.preventDefault();
+    if (!token) {
+      setGameError("Login is required before creating a game.");
+      return;
+    }
     setSaving(true);
     setGameError("");
     try {
@@ -64,7 +87,8 @@ function App() {
       const response = await fetch("/api/games", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...authHeaders()
         },
         body: JSON.stringify(payload)
       });
@@ -142,14 +166,16 @@ function App() {
         const message = await response.text();
         throw new Error(message || `Login failed (${response.status})`);
       }
-      const user = await response.json();
-      setCurrentUser(user);
-      setAuthInfo(`Logged in as ${user.username}`);
+      const data = await response.json();
+      localStorage.setItem("auth_token", data.token);
+      setToken(data.token);
+      setCurrentUser(data.user);
+      setAuthInfo(`Logged in as ${data.user.username}`);
       setLoginForm(initialAuthForm);
       setForm((prev) => ({
         ...prev,
-        publisherId: prev.publisherId || user.id,
-        producerId: prev.producerId || user.id
+        publisherId: prev.publisherId || data.user.id,
+        producerId: prev.producerId || data.user.id
       }));
     } catch (e) {
       setAuthError(e.message);
@@ -230,6 +256,7 @@ function App() {
         </div>
         {authError ? <p className="error">{authError}</p> : null}
         {authInfo ? <p className="muted">{authInfo}</p> : null}
+        {!token ? <p className="muted">Login required for game operations.</p> : null}
       </section>
 
       <main className="layout">
