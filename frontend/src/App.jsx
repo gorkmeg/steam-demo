@@ -9,18 +9,30 @@ const initialForm = {
   producerId: ""
 };
 
+const initialAuthForm = {
+  username: "",
+  password: ""
+};
+
 function App() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [gameError, setGameError] = useState("");
   const [form, setForm] = useState(initialForm);
+  const [registerForm, setRegisterForm] = useState(initialAuthForm);
+  const [loginForm, setLoginForm] = useState(initialAuthForm);
+  const [registering, setRegistering] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [authInfo, setAuthInfo] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
 
   const hasGames = useMemo(() => games.length > 0, [games.length]);
 
   async function loadGames() {
     setLoading(true);
-    setError("");
+    setGameError("");
     try {
       const response = await fetch("/api/games");
       if (!response.ok) {
@@ -29,7 +41,7 @@ function App() {
       const data = await response.json();
       setGames(data);
     } catch (e) {
-      setError(e.message);
+      setGameError(e.message);
     } finally {
       setLoading(false);
     }
@@ -42,7 +54,7 @@ function App() {
   async function handleCreateGame(event) {
     event.preventDefault();
     setSaving(true);
-    setError("");
+    setGameError("");
     try {
       const payload = {
         ...form,
@@ -63,7 +75,7 @@ function App() {
       setForm(initialForm);
       await loadGames();
     } catch (e) {
-      setError(e.message);
+      setGameError(e.message);
     } finally {
       setSaving(false);
     }
@@ -72,6 +84,78 @@ function App() {
   function handleChange(event) {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function handleRegisterChange(event) {
+    const { name, value } = event.target;
+    setRegisterForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function handleLoginChange(event) {
+    const { name, value } = event.target;
+    setLoginForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  async function handleRegister(event) {
+    event.preventDefault();
+    setRegistering(true);
+    setAuthError("");
+    setAuthInfo("");
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(registerForm)
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || `Register failed (${response.status})`);
+      }
+      const user = await response.json();
+      setCurrentUser(user);
+      setAuthInfo(`Registered as ${user.username}`);
+      setRegisterForm(initialAuthForm);
+      setForm((prev) => ({
+        ...prev,
+        publisherId: prev.publisherId || user.id,
+        producerId: prev.producerId || user.id
+      }));
+    } catch (e) {
+      setAuthError(e.message);
+    } finally {
+      setRegistering(false);
+    }
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    setLoggingIn(true);
+    setAuthError("");
+    setAuthInfo("");
+    try {
+      const response = await fetch("/api/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(loginForm)
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || `Login failed (${response.status})`);
+      }
+      const user = await response.json();
+      setCurrentUser(user);
+      setAuthInfo(`Logged in as ${user.username}`);
+      setLoginForm(initialAuthForm);
+      setForm((prev) => ({
+        ...prev,
+        publisherId: prev.publisherId || user.id,
+        producerId: prev.producerId || user.id
+      }));
+    } catch (e) {
+      setAuthError(e.message);
+    } finally {
+      setLoggingIn(false);
+    }
   }
 
   return (
@@ -85,6 +169,68 @@ function App() {
           Manage games, pricing, and publisher or producer links from one panel.
         </p>
       </header>
+
+      <section className="panel auth-panel">
+        <div className="list-header">
+          <h2>Account</h2>
+          {currentUser ? <p className="muted">Current: {currentUser.username}</p> : null}
+        </div>
+        <div className="auth-grid">
+          <form onSubmit={handleRegister} className="form-grid">
+            <h3>Register</h3>
+            <label>
+              Username
+              <input
+                name="username"
+                value={registerForm.username}
+                onChange={handleRegisterChange}
+                required
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                name="password"
+                value={registerForm.password}
+                onChange={handleRegisterChange}
+                required
+              />
+            </label>
+            <button type="submit" disabled={registering}>
+              {registering ? "Registering..." : "Register"}
+            </button>
+          </form>
+
+          <form onSubmit={handleLogin} className="form-grid">
+            <h3>Login</h3>
+            <label>
+              Username
+              <input
+                name="username"
+                value={loginForm.username}
+                onChange={handleLoginChange}
+                required
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                name="password"
+                value={loginForm.password}
+                onChange={handleLoginChange}
+                required
+              />
+            </label>
+            <button type="submit" disabled={loggingIn}>
+              {loggingIn ? "Logging in..." : "Login"}
+            </button>
+          </form>
+        </div>
+        {authError ? <p className="error">{authError}</p> : null}
+        {authInfo ? <p className="muted">{authInfo}</p> : null}
+      </section>
 
       <main className="layout">
         <section className="panel form-panel">
@@ -160,7 +306,7 @@ function App() {
             </button>
           </div>
 
-          {error ? <p className="error">{error}</p> : null}
+          {gameError ? <p className="error">{gameError}</p> : null}
           {loading ? <p className="muted">Loading games...</p> : null}
           {!loading && !hasGames ? <p className="muted">No games yet.</p> : null}
 
