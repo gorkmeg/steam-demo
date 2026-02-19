@@ -9,6 +9,7 @@ import com.steampowered.steam_demo.mapper.UserMapper;
 import com.steampowered.steam_demo.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -28,5 +29,10 @@ public class UserController {
     @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest loginRequest) {
         return userService.login(loginRequest);
+    }
+
+    @GetMapping("/me")
+    public UserResponse me(Authentication authentication) {
+        return userService.getCurrentUser(authentication.getName());
     }
 }

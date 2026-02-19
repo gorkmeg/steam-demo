@@ -3,6 +3,7 @@ package com.steampowered.steam_demo.service;
 import com.steampowered.steam_demo.dto.request.RegisterRequest;
 import com.steampowered.steam_demo.dto.request.LoginRequest;
 import com.steampowered.steam_demo.dto.response.LoginResponse;
+import com.steampowered.steam_demo.dto.response.UserResponse;
 import com.steampowered.steam_demo.entity.User;
 import com.steampowered.steam_demo.entity.UserType;
 import com.steampowered.steam_demo.mapper.UserMapper;
@@ -50,5 +51,12 @@ public class UserService {
         response.setExpiresIn(jwtService.getExpirationMs());
         response.setUser(userMapper.toResponse(user));
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getCurrentUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"));
+        return userMapper.toResponse(user);
     }
 }
