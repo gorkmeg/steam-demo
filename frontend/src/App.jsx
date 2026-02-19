@@ -26,7 +26,10 @@ function App() {
   const [loggingIn, setLoggingIn] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authInfo, setAuthInfo] = useState("");
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const raw = localStorage.getItem("auth_user");
+    return raw ? JSON.parse(raw) : null;
+  });
   const [token, setToken] = useState(() => localStorage.getItem("auth_token") || "");
 
   const hasGames = useMemo(() => games.length > 0, [games.length]);
@@ -36,6 +39,14 @@ function App() {
       return {};
     }
     return { Authorization: `Bearer ${token}` };
+  }
+
+  function clearSession() {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_user");
+    setToken("");
+    setCurrentUser(null);
+    setGames([]);
   }
 
   async function loadGames() {
@@ -65,9 +76,29 @@ function App() {
   useEffect(() => {
     if (!token) {
       setLoading(false);
+      setCurrentUser(null);
       return;
     }
-    loadGames();
+
+    async function restoreSession() {
+      try {
+        const response = await fetch("/api/users/me", { headers: authHeaders() });
+        if (!response.ok) {
+          clearSession();
+          setAuthError("Your session expired. Please login again.");
+          return;
+        }
+        const user = await response.json();
+        localStorage.setItem("auth_user", JSON.stringify(user));
+        setCurrentUser(user);
+        await loadGames();
+      } catch (e) {
+        clearSession();
+        setAuthError("Session restore failed. Please login again.");
+      }
+    }
+
+    restoreSession();
   }, [token]);
 
   async function handleCreateGame(event) {
@@ -168,6 +199,7 @@ function App() {
       }
       const data = await response.json();
       localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
       setToken(data.token);
       setCurrentUser(data.user);
       setAuthInfo(`Logged in as ${data.user.username}`);
@@ -201,6 +233,11 @@ function App() {
           <h2>Account</h2>
           {currentUser ? <p className="muted">Current: {currentUser.username}</p> : null}
         </div>
+        {token ? (
+          <button type="button" onClick={clearSession}>
+            Logout
+          </button>
+        ) : null}
         <div className="auth-grid">
           <form onSubmit={handleRegister} className="form-grid">
             <h3>Register</h3>
