@@ -1,408 +1,199 @@
 import { useEffect, useMemo, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } from "react-router-dom";
 
-const initialForm = {
-  name: "",
-  description: "",
-  price: "",
-  gameType: "",
-  publisherId: "",
-  producerId: ""
-};
-
-const initialAuthForm = {
-  username: "",
-  password: ""
-};
+// --- INITIAL STATES ---
+const initialForm = { name: "", description: "", price: "", gameType: "", publisherId: "", producerId: "" };
+const initialAuthForm = { username: "", password: "" };
 
 function App() {
-  const [games, setGames] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [gameError, setGameError] = useState("");
-  const [form, setForm] = useState(initialForm);
-  const [registerForm, setRegisterForm] = useState(initialAuthForm);
-  const [loginForm, setLoginForm] = useState(initialAuthForm);
-  const [registering, setRegistering] = useState(false);
-  const [loggingIn, setLoggingIn] = useState(false);
-  const [authError, setAuthError] = useState("");
-  const [authInfo, setAuthInfo] = useState("");
+  const [token, setToken] = useState(() => localStorage.getItem("auth_token") || "");
   const [currentUser, setCurrentUser] = useState(() => {
     const raw = localStorage.getItem("auth_user");
     return raw ? JSON.parse(raw) : null;
   });
-  const [token, setToken] = useState(() => localStorage.getItem("auth_token") || "");
 
-  const hasGames = useMemo(() => games.length > 0, [games.length]);
-
-  function authHeaders() {
-    if (!token) {
-      return {};
-    }
-    return { Authorization: `Bearer ${token}` };
-  }
-
-  function clearSession() {
+  const logout = () => {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_user");
     setToken("");
     setCurrentUser(null);
-    setGames([]);
-  }
+  };
 
-  async function loadGames() {
-    if (!token) {
-      setGames([]);
-      setLoading(false);
-      return;
-    }
+  return (
+      <Router>
+        <div className="page">
+          <div className="ambient ambient-left" />
+          <div className="ambient ambient-right" />
+
+          <Routes>
+            {/* Kamu Sayfaları */}
+            <Route
+                path="/login"
+                element={!token ? <LoginPage setToken={setToken} setCurrentUser={setCurrentUser} /> : <Navigate to="/" />}
+            />
+            <Route
+                path="/register"
+                element={!token ? <RegisterPage setToken={setToken} setCurrentUser={setCurrentUser} /> : <Navigate to="/" />}
+            />
+
+            {/* Korumalı Sayfalar (Sadece Login Olanlar) */}
+            <Route
+                path="/"
+                element={token ? <Dashboard token={token} currentUser={currentUser} logout={logout} /> : <Navigate to="/login" />}
+            />
+          </Routes>
+        </div>
+      </Router>
+  );
+}
+
+// --- SAYFA BİLEŞENLERİ ---
+
+function LoginPage({ setToken, setCurrentUser }) {
+  const [form, setForm] = useState(initialAuthForm);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
     setLoading(true);
-    setGameError("");
-    try {
-      const response = await fetch("/api/games", {
-        headers: authHeaders()
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to load games (${response.status})`);
-      }
-      const data = await response.json();
-      setGames(data);
-    } catch (e) {
-      setGameError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      setCurrentUser(null);
-      return;
-    }
-
-    async function restoreSession() {
-      try {
-        const response = await fetch("/api/users/me", { headers: authHeaders() });
-        if (!response.ok) {
-          clearSession();
-          setAuthError("Your session expired. Please login again.");
-          return;
-        }
-        const user = await response.json();
-        localStorage.setItem("auth_user", JSON.stringify(user));
-        setCurrentUser(user);
-        await loadGames();
-      } catch (e) {
-        clearSession();
-        setAuthError("Session restore failed. Please login again.");
-      }
-    }
-
-    restoreSession();
-  }, [token]);
-
-  async function handleCreateGame(event) {
-    event.preventDefault();
-    if (!token) {
-      setGameError("Login is required before creating a game.");
-      return;
-    }
-    setSaving(true);
-    setGameError("");
-    try {
-      const payload = {
-        ...form,
-        price: Number(form.price),
-        gameType: form.gameType.trim()
-      };
-      const response = await fetch("/api/games", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders()
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || `Failed to create game (${response.status})`);
-      }
-      setForm(initialForm);
-      await loadGames();
-    } catch (e) {
-      setGameError(e.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleChange(event) {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }
-
-  function handleRegisterChange(event) {
-    const { name, value } = event.target;
-    setRegisterForm((prev) => ({ ...prev, [name]: value }));
-  }
-
-  function handleLoginChange(event) {
-    const { name, value } = event.target;
-    setLoginForm((prev) => ({ ...prev, [name]: value }));
-  }
-
-  async function handleRegister(event) {
-    event.preventDefault();
-    setRegistering(true);
-    setAuthError("");
-    setAuthInfo("");
-    try {
-      const response = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(registerForm)
-      });
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || `Register failed (${response.status})`);
-      }
-      const user = await response.json();
-      setCurrentUser(user);
-      setAuthInfo(`Registered as ${user.username}`);
-      setRegisterForm(initialAuthForm);
-      setForm((prev) => ({
-        ...prev,
-        publisherId: prev.publisherId || user.id,
-        producerId: prev.producerId || user.id
-      }));
-    } catch (e) {
-      setAuthError(e.message);
-    } finally {
-      setRegistering(false);
-    }
-  }
-
-  async function handleLogin(event) {
-    event.preventDefault();
-    setLoggingIn(true);
-    setAuthError("");
-    setAuthInfo("");
+    setError("");
     try {
       const response = await fetch("/api/users/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(loginForm)
+        body: JSON.stringify(form)
       });
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || `Login failed (${response.status})`);
-      }
+      if (!response.ok) throw new Error("Giriş başarısız.");
       const data = await response.json();
       localStorage.setItem("auth_token", data.token);
       localStorage.setItem("auth_user", JSON.stringify(data.user));
       setToken(data.token);
       setCurrentUser(data.user);
-      setAuthInfo(`Logged in as ${data.user.username}`);
-      setLoginForm(initialAuthForm);
-      setForm((prev) => ({
-        ...prev,
-        publisherId: prev.publisherId || data.user.id,
-        producerId: prev.producerId || data.user.id
-      }));
-    } catch (e) {
-      setAuthError(e.message);
-    } finally {
-      setLoggingIn(false);
-    }
-  }
+      navigate("/");
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  };
 
   return (
-    <div className="page">
-      <div className="ambient ambient-left" />
-      <div className="ambient ambient-right" />
-      <header className="hero">
-        <p className="eyebrow">Steam Demo</p>
-        <h1>Game Library Console</h1>
-        <p className="sub">
-          Manage games, pricing, and publisher or producer links from one panel.
-        </p>
-      </header>
+      <div className="auth-container">
+        <header className="hero"><h1>Login</h1></header>
+        <form onSubmit={handleLogin} className="panel form-grid">
+          <label>Username <input name="username" onChange={e => setForm({...form, username: e.target.value})} required /></label>
+          <label>Password <input type="password" name="password" onChange={e => setForm({...form, password: e.target.value})} required /></label>
+          <button disabled={loading}>{loading ? "Connecting..." : "Login"}</button>
+          {error && <p className="error">{error}</p>}
+          <p className="muted">Don't have an account? <Link to="/register">Register here</Link></p>
+        </form>
+      </div>
+  );
+}
 
-      <section className="panel auth-panel">
-        <div className="list-header">
-          <h2>Account</h2>
-          {currentUser ? <p className="muted">Current: {currentUser.username}</p> : null}
-        </div>
-        {token ? (
-          <button type="button" onClick={clearSession}>
-            Logout
-          </button>
-        ) : null}
-        <div className="auth-grid">
-          <form onSubmit={handleRegister} className="form-grid">
-            <h3>Register</h3>
-            <label>
-              Username
-              <input
-                name="username"
-                value={registerForm.username}
-                onChange={handleRegisterChange}
-                required
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                name="password"
-                value={registerForm.password}
-                onChange={handleRegisterChange}
-                required
-              />
-            </label>
-            <button type="submit" disabled={registering}>
-              {registering ? "Registering..." : "Register"}
-            </button>
-          </form>
+function RegisterPage() {
+  const [form, setForm] = useState(initialAuthForm);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const navigate = useNavigate();
 
-          <form onSubmit={handleLogin} className="form-grid">
-            <h3>Login</h3>
-            <label>
-              Username
-              <input
-                name="username"
-                value={loginForm.username}
-                onChange={handleLoginChange}
-                required
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                name="password"
-                value={loginForm.password}
-                onChange={handleLoginChange}
-                required
-              />
-            </label>
-            <button type="submit" disabled={loggingIn}>
-              {loggingIn ? "Logging in..." : "Login"}
-            </button>
-          </form>
-        </div>
-        {authError ? <p className="error">{authError}</p> : null}
-        {authInfo ? <p className="muted">{authInfo}</p> : null}
-        {!token ? <p className="muted">Login required for game operations.</p> : null}
-      </section>
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      if (!response.ok) throw new Error("Kayıt başarısız.");
+      setInfo("Success! Redirecing to login...");
+      setTimeout(() => navigate("/login"), 2000);
+    } catch (e) { setError(e.message); }
+  };
 
-      <main className="layout">
-        <section className="panel form-panel">
-          <h2>Add New Game</h2>
-          <form onSubmit={handleCreateGame} className="form-grid">
-            <label>
-              Name
-              <input name="name" value={form.name} onChange={handleChange} required />
-            </label>
-            <label>
-              Description
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                rows={4}
-                required
-              />
-            </label>
-            <label>
-              Price
-              <input
-                name="price"
-                value={form.price}
-                onChange={handleChange}
-                type="number"
-                min="0"
-                step="0.01"
-                required
-              />
-            </label>
-            <label>
-              Game Type
-              <input
-                name="gameType"
-                value={form.gameType}
-                onChange={handleChange}
-                placeholder="ACTION"
-                required
-              />
-            </label>
-            <label>
-              Publisher ID
-              <input
-                name="publisherId"
-                value={form.publisherId}
-                onChange={handleChange}
-                placeholder="UUID"
-                required
-              />
-            </label>
-            <label>
-              Producer ID
-              <input
-                name="producerId"
-                value={form.producerId}
-                onChange={handleChange}
-                placeholder="UUID"
-                required
-              />
-            </label>
-            <button type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Create Game"}
-            </button>
-          </form>
-        </section>
+  return (
+      <div className="auth-container">
+        <header className="hero"><h1>Create Account</h1></header>
+        <form onSubmit={handleRegister} className="panel form-grid">
+          <label>Username <input name="username" onChange={e => setForm({...form, username: e.target.value})} required /></label>
+          <label>Password <input type="password" name="password" onChange={e => setForm({...form, password: e.target.value})} required /></label>
+          <button>Register</button>
+          {error && <p className="error">{error}</p>}
+          {info && <p className="success">{info}</p>}
+          <p className="muted">Already have an account? <Link to="/login">Login here</Link></p>
+        </form>
+      </div>
+  );
+}
 
-        <section className="panel list-panel">
-          <div className="list-header">
-            <h2>Games</h2>
-            <button onClick={loadGames} disabled={loading}>
-              Refresh
-            </button>
+function Dashboard({ token, currentUser, logout }) {
+  const [games, setGames] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({...initialForm, publisherId: currentUser?.id, producerId: currentUser?.id});
+
+  const authHeaders = { Authorization: `Bearer ${token}` };
+
+  const loadGames = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/games", { headers: authHeaders });
+      const data = await res.json();
+      setGames(data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { loadGames(); }, []);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    await fetch("/api/games", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({...form, price: Number(form.price)})
+    });
+    setForm({...initialForm, publisherId: currentUser?.id, producerId: currentUser?.id});
+    loadGames();
+  };
+
+  return (
+      <div className="layout-wrapper">
+        <header className="hero">
+          <div className="user-nav">
+            <span>Welcome, <strong>{currentUser?.username}</strong></span>
+            <button className="btn-sm" onClick={logout}>Logout</button>
           </div>
+          <h1>Game Library</h1>
+        </header>
 
-          {gameError ? <p className="error">{gameError}</p> : null}
-          {loading ? <p className="muted">Loading games...</p> : null}
-          {!loading && !hasGames ? <p className="muted">No games yet.</p> : null}
+        <main className="layout">
+          <section className="panel form-panel">
+            <h2>Add New Game</h2>
+            <form onSubmit={handleCreate} className="form-grid">
+              <input placeholder="Game Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required />
+              <textarea placeholder="Description" value={form.description} onChange={e => setForm({...form, description: e.target.value})} required />
+              <input type="number" placeholder="Price" value={form.price} onChange={e => setForm({...form, price: e.target.value})} required />
+              <input placeholder="Type (e.g. ACTION)" value={form.gameType} onChange={e => setForm({...form, gameType: e.target.value})} required />
+              <button type="submit">Create Game</button>
+            </form>
+          </section>
 
-          <div className="cards">
-            {games.map((game) => (
-              <article key={game.id} className="card">
-                <h3>{game.name}</h3>
-                <p>{game.description}</p>
-                <dl>
-                  <div>
-                    <dt>Price</dt>
-                    <dd>${game.price}</dd>
-                  </div>
-                  <div>
-                    <dt>Type</dt>
-                    <dd>{game.gameType}</dd>
-                  </div>
-                  <div>
-                    <dt>Publisher</dt>
-                    <dd>{game.publisher?.username || game.publisher?.id || "-"}</dd>
-                  </div>
-                  <div>
-                    <dt>Producer</dt>
-                    <dd>{game.producer?.username || game.producer?.id || "-"}</dd>
-                  </div>
-                </dl>
-              </article>
-            ))}
-          </div>
-        </section>
-      </main>
-    </div>
+          <section className="panel list-panel">
+            <div className="list-header">
+              <h2>Your Library</h2>
+              <button onClick={loadGames}>Refresh</button>
+            </div>
+            <div className="cards">
+              {games.map(game => (
+                  <article key={game.id} className="card">
+                    <h3>{game.name}</h3>
+                    <p>{game.description}</p>
+                    <div className="badge">${game.price} - {game.gameType}</div>
+                  </article>
+              ))}
+            </div>
+          </section>
+        </main>
+      </div>
   );
 }
 
