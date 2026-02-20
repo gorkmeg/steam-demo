@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { BrowserRouter as Router, Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 
 const gameTypeOptions = ["GAME_SIMULATION", "GAME_STRATEGY", "GAME_SPORT"];
-const initialForm = { name: "", description: "", price: "", gameType: "" };
+const initialGameForm = { name: "", description: "", price: "", gameType: "" };
 const initialAuthForm = { username: "", password: "" };
 
 function App() {
@@ -34,7 +34,6 @@ function App() {
             path="/register"
             element={!token ? <RegisterPage /> : <Navigate to="/" />}
           />
-
           <Route
             path="/"
             element={token ? <Dashboard token={token} currentUser={currentUser} logout={logout} /> : <Navigate to="/login" />}
@@ -55,21 +54,26 @@ function LoginPage({ setToken, setCurrentUser }) {
     e.preventDefault();
     setLoading(true);
     setError("");
+
     try {
       const response = await fetch("/api/users/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
       });
-      if (!response.ok) throw new Error("Login failed.");
+
+      if (!response.ok) {
+        throw new Error("Login failed.");
+      }
+
       const data = await response.json();
       localStorage.setItem("auth_token", data.token);
       localStorage.setItem("auth_user", JSON.stringify(data.user));
       setToken(data.token);
       setCurrentUser(data.user);
       navigate("/");
-    } catch (e) {
-      setError(e.message);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -77,12 +81,36 @@ function LoginPage({ setToken, setCurrentUser }) {
 
   return (
     <div className="auth-container">
-      <header className="hero"><h1>Login</h1></header>
-      <form onSubmit={handleLogin} className="panel form-grid">
-        <label>Username <input name="username" onChange={(e) => setForm({ ...form, username: e.target.value })} required /></label>
-        <label>Password <input type="password" name="password" onChange={(e) => setForm({ ...form, password: e.target.value })} required /></label>
+      <header className="hero">
+        <p className="eyebrow">Steam Demo</p>
+        <h1>Sign In</h1>
+        <p className="sub">Access your store, add funds, and manage your owned games.</p>
+      </header>
+
+      <form onSubmit={handleLogin} className="panel form-grid auth-panel">
+        <label>
+          Username
+          <input
+            name="username"
+            value={form.username}
+            onChange={(e) => setForm({ ...form, username: e.target.value })}
+            required
+          />
+        </label>
+
+        <label>
+          Password
+          <input
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required
+          />
+        </label>
+
         <button disabled={loading}>{loading ? "Connecting..." : "Login"}</button>
-        {error && <p className="error">{error}</p>}
+        {error ? <p className="error">{error}</p> : null}
         <p className="muted">Don&apos;t have an account? <Link to="/register">Register here</Link></p>
       </form>
     </div>
@@ -97,29 +125,60 @@ function RegisterPage() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setError("");
+    setInfo("");
+
     try {
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
       });
-      if (!response.ok) throw new Error("Register failed.");
+
+      if (!response.ok) {
+        throw new Error("Register failed.");
+      }
+
       setInfo("Success! Redirecting to login...");
-      setTimeout(() => navigate("/login"), 2000);
-    } catch (e) {
-      setError(e.message);
+      setTimeout(() => navigate("/login"), 1200);
+    } catch (err) {
+      setError(err.message);
     }
   };
 
   return (
     <div className="auth-container">
-      <header className="hero"><h1>Create Account</h1></header>
-      <form onSubmit={handleRegister} className="panel form-grid">
-        <label>Username <input name="username" onChange={(e) => setForm({ ...form, username: e.target.value })} required /></label>
-        <label>Password <input type="password" name="password" onChange={(e) => setForm({ ...form, password: e.target.value })} required /></label>
+      <header className="hero">
+        <p className="eyebrow">Steam Demo</p>
+        <h1>Create Account</h1>
+        <p className="sub">Create your account and start building your game collection.</p>
+      </header>
+
+      <form onSubmit={handleRegister} className="panel form-grid auth-panel">
+        <label>
+          Username
+          <input
+            name="username"
+            value={form.username}
+            onChange={(e) => setForm({ ...form, username: e.target.value })}
+            required
+          />
+        </label>
+
+        <label>
+          Password
+          <input
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required
+          />
+        </label>
+
         <button>Register</button>
-        {error && <p className="error">{error}</p>}
-        {info && <p className="success">{info}</p>}
+        {error ? <p className="error">{error}</p> : null}
+        {info ? <p className="success">{info}</p> : null}
         <p className="muted">Already have an account? <Link to="/login">Login here</Link></p>
       </form>
     </div>
@@ -128,135 +187,282 @@ function RegisterPage() {
 
 function Dashboard({ token, currentUser, logout }) {
   const [games, setGames] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [library, setLibrary] = useState([]);
+  const [profile, setProfile] = useState(currentUser);
+  const [storeLoading, setStoreLoading] = useState(true);
+  const [libraryLoading, setLibraryLoading] = useState(true);
   const [buyingId, setBuyingId] = useState(null);
-  const [form, setForm] = useState({ ...initialForm });
+  const [balanceAmount, setBalanceAmount] = useState("");
+  const [balanceStatus, setBalanceStatus] = useState({ type: "", text: "" });
+  const [addingBalance, setAddingBalance] = useState(false);
+  const [gameForm, setGameForm] = useState({ ...initialGameForm });
   const navigate = useNavigate();
-  const canCreateGame =
-    currentUser?.userType === "ROLE_PUBLISHER" || currentUser?.userType === "ROLE_PRODUCER";
+
+  const canCreateGame = useMemo(
+    () => currentUser?.userType === "ROLE_PUBLISHER" || currentUser?.userType === "ROLE_PRODUCER",
+    [currentUser]
+  );
+  const formattedBalance = useMemo(() => {
+    const numericBalance = Number(profile?.balance ?? 0);
+    return Number.isFinite(numericBalance) ? numericBalance.toFixed(2) : "0.00";
+  }, [profile]);
 
   const authHeaders = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`
   };
 
+  const handleUnauthorized = (status) => {
+    if (status === 401 || status === 403) {
+      logout();
+      navigate("/login");
+      return true;
+    }
+    return false;
+  };
+
   const loadGames = async () => {
-    setLoading(true);
+    setStoreLoading(true);
     try {
       const res = await fetch("/api/games", { headers: authHeaders });
-      if (res.status === 401 || res.status === 403) {
-        logout();
-        navigate("/login");
+      if (handleUnauthorized(res.status)) {
         return;
       }
       if (!res.ok) {
         setGames([]);
         return;
       }
-
-      const text = await res.text();
-      const data = text ? JSON.parse(text) : [];
+      const data = await res.json();
       setGames(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error("Load error:", e);
+    } catch (err) {
+      console.error("Load games error:", err);
       setGames([]);
     } finally {
-      setLoading(false);
+      setStoreLoading(false);
+    }
+  };
+
+  const loadLibrary = async () => {
+    setLibraryLoading(true);
+    try {
+      const res = await fetch("/api/library", { headers: authHeaders });
+      if (handleUnauthorized(res.status)) {
+        return;
+      }
+      if (!res.ok) {
+        setLibrary([]);
+        return;
+      }
+      const data = await res.json();
+      setLibrary(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Load library error:", err);
+      setLibrary([]);
+    } finally {
+      setLibraryLoading(false);
+    }
+  };
+
+  const loadProfile = async () => {
+    try {
+      const res = await fetch("/api/users/me", { headers: authHeaders });
+      if (handleUnauthorized(res.status)) {
+        return;
+      }
+      if (!res.ok) {
+        return;
+      }
+      const data = await res.json();
+      setProfile(data);
+      localStorage.setItem("auth_user", JSON.stringify(data));
+    } catch (err) {
+      console.error("Load profile error:", err);
     }
   };
 
   useEffect(() => {
     loadGames();
-  }, []);
+    loadLibrary();
+    loadProfile();
+  }, [token]);
+
+  useEffect(() => {
+    setProfile(currentUser);
+  }, [currentUser]);
 
   const handleBuy = async (gameId) => {
     setBuyingId(gameId);
     try {
-      const response = await fetch(`/api/library`, {
+      const response = await fetch("/api/library", {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify({ gameId, userId: currentUser.id })
+        body: JSON.stringify({ gameId })
       });
 
       if (response.ok) {
-        alert("Game purchased successfully! Check your library.");
+        await loadLibrary();
+        await loadProfile();
+        alert("Game purchased successfully.");
       } else {
         const msg = await response.text();
-        alert("Purchase failed: " + msg);
+        alert(`Purchase failed: ${msg || "Unknown error"}`);
       }
-    } catch (e) {
-      alert("Error: " + e.message);
+    } catch (err) {
+      alert(`Error: ${err.message}`);
     } finally {
       setBuyingId(null);
     }
   };
 
-  const handleCreate = async (e) => {
+  const handleAddBalance = async (e) => {
     e.preventDefault();
+    setBalanceStatus({ type: "", text: "" });
+
+    const value = Number(balanceAmount);
+    if (Number.isNaN(value) || value <= 0) {
+      setBalanceStatus({ type: "error", text: "Enter a valid amount greater than 0." });
+      return;
+    }
+
+    setAddingBalance(true);
+    try {
+      const response = await fetch("/api/users/add-balance", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ balance: value })
+      });
+
+      if (!response.ok) {
+        const msg = await response.text();
+        setBalanceStatus({ type: "error", text: msg || "Could not add balance." });
+        return;
+      }
+
+      setBalanceAmount("");
+      setBalanceStatus({ type: "success", text: "Balance added successfully." });
+      await loadProfile();
+    } catch (err) {
+      setBalanceStatus({ type: "error", text: "Error while adding balance." });
+    } finally {
+      setAddingBalance(false);
+    }
+  };
+
+  const handleCreateGame = async (e) => {
+    e.preventDefault();
+
     if (!canCreateGame) {
       alert("Only publisher or producer can create games.");
       return;
     }
+
     const response = await fetch("/api/games", {
       method: "POST",
       headers: authHeaders,
-      body: JSON.stringify({ ...form, price: Number(form.price) })
+      body: JSON.stringify({ ...gameForm, price: Number(gameForm.price) })
     });
 
     if (!response.ok) {
       const message = await response.text();
-      alert("Create game failed: " + (message || response.status));
+      alert(`Create game failed: ${message || response.status}`);
       return;
     }
 
-    setForm({ ...initialForm });
-    loadGames();
+    setGameForm({ ...initialGameForm });
+    await loadGames();
   };
 
   return (
     <div className="layout-wrapper">
-      <header className="hero">
+      <header className="hero dashboard-hero">
+        <p className="eyebrow">Control Center</p>
         <div className="user-nav">
-          <span>Welcome, <strong>{currentUser?.username}</strong></span>
+          <h1>Welcome, {profile?.username || currentUser?.username}</h1>
+          <p className="balance-chip">Current Balance: ${formattedBalance}</p>
           <button className="btn-sm" onClick={logout}>Logout</button>
         </div>
-        <h1>Game Library</h1>
+        <p className="sub">Browse the store, buy games, and track your personal library in one place.</p>
       </header>
 
       <main className="layout">
-        {canCreateGame ? (
-          <section className="panel form-panel">
-            <h2>Add New Game</h2>
-            <form onSubmit={handleCreate} className="form-grid">
-              <input placeholder="Game Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
-              <input type="number" placeholder="Price" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
-              <select value={form.gameType} onChange={(e) => setForm({ ...form, gameType: e.target.value })} required>
-                <option value="" disabled>Select game type</option>
-                {gameTypeOptions.map((type) => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-              <button type="submit" className="btn-success">Create Game</button>
+        <section className="side-column">
+          <section className="panel balance-panel">
+            <h2>Add Balance</h2>
+            <form onSubmit={handleAddBalance} className="form-grid">
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="Amount"
+                value={balanceAmount}
+                onChange={(e) => setBalanceAmount(e.target.value)}
+                required
+              />
+              <button type="submit" disabled={addingBalance}>
+                {addingBalance ? "Adding..." : "Add Balance"}
+              </button>
             </form>
+            {balanceStatus.text ? (
+              <p className={balanceStatus.type === "error" ? "error" : "success"}>{balanceStatus.text}</p>
+            ) : null}
           </section>
-        ) : null}
+
+          {canCreateGame ? (
+            <section className="panel form-panel">
+              <h2>Add New Game</h2>
+              <form onSubmit={handleCreateGame} className="form-grid">
+                <input
+                  placeholder="Game Name"
+                  value={gameForm.name}
+                  onChange={(e) => setGameForm({ ...gameForm, name: e.target.value })}
+                  required
+                />
+                <textarea
+                  placeholder="Description"
+                  value={gameForm.description}
+                  onChange={(e) => setGameForm({ ...gameForm, description: e.target.value })}
+                  required
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Price"
+                  value={gameForm.price}
+                  onChange={(e) => setGameForm({ ...gameForm, price: e.target.value })}
+                  required
+                />
+                <select
+                  value={gameForm.gameType}
+                  onChange={(e) => setGameForm({ ...gameForm, gameType: e.target.value })}
+                  required
+                >
+                  <option value="" disabled>Select game type</option>
+                  {gameTypeOptions.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+                <button type="submit">Create Game</button>
+              </form>
+            </section>
+          ) : null}
+        </section>
 
         <section className="panel list-panel">
           <div className="list-header">
             <h2>Store Front</h2>
             <button onClick={loadGames}>Refresh List</button>
           </div>
-          {loading ? <p>Loading games...</p> : null}
+          {storeLoading ? <p className="muted">Loading games...</p> : null}
+          {!storeLoading && games.length === 0 ? <p className="muted">No games found.</p> : null}
           <div className="cards">
             {games.map((game) => (
               <article key={game.id} className="card">
                 <div className="card-content">
                   <h3>{game.name}</h3>
                   <p>{game.description}</p>
-                  <div className="badge">${game.price} - {game.gameType}</div>
+                  <div className="badge">${game.price} | {game.gameType}</div>
                 </div>
-
                 <button
                   className="buy-button"
                   onClick={() => handleBuy(game.id)}
@@ -264,6 +470,30 @@ function Dashboard({ token, currentUser, logout }) {
                 >
                   {buyingId === game.id ? "Processing..." : "Buy Game"}
                 </button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel list-panel full-width">
+          <div className="list-header">
+            <h2>My Library</h2>
+            <button onClick={loadLibrary}>Refresh Library</button>
+          </div>
+          {libraryLoading ? <p className="muted">Loading library...</p> : null}
+          {!libraryLoading && library.length === 0 ? <p className="muted">No games in your library yet.</p> : null}
+
+          <div className="cards">
+            {library.map((item) => (
+              <article key={item.libraryItemId} className="card">
+                <div className="card-content">
+                  <h3>{item.gameName}</h3>
+                  <p>{item.gameDescription}</p>
+                  <div className="badge">${item.gamePrice} | {item.gameType}</div>
+                  <p className="muted small">
+                    Added: {item.addedAt ? new Date(item.addedAt).toLocaleString() : "-"}
+                  </p>
+                </div>
               </article>
             ))}
           </div>
