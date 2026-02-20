@@ -42,6 +42,12 @@ public class LibraryService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Game already exists in library");
         }
 
+        if(user.getBalance().compareTo(game.getPrice()) < 0){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient balance");
+        }
+
+        user.setBalance(user.getBalance().subtract(game.getPrice()));
+
         LibraryItem libraryItem = new LibraryItem();
         libraryItem.setUser(user);
         libraryItem.setGame(game);
@@ -55,13 +61,5 @@ public class LibraryService {
                 .stream()
                 .map(libraryMapper::toResponse)
                 .toList();
-    }
-
-    @Transactional
-    public void removeGameFromLibrary(UUID userId, UUID gameId) {
-        if (!libraryRepository.existsByUserIdAndGameId(userId, gameId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Game not found in library");
-        }
-        libraryRepository.deleteByUserIdAndGameId(userId, gameId);
     }
 }

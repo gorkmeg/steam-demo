@@ -32,11 +32,4 @@ public class LibraryController {
         UserResponse currentUser = userService.getCurrentUser(authentication.getName());
         return libraryService.addGameToLibrary(currentUser.getId(), request);
     }
-
-    @DeleteMapping("/{gameId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeFromMyLibrary(@PathVariable UUID gameId, Authentication authentication) {
-        UserResponse currentUser = userService.getCurrentUser(authentication.getName());
-        libraryService.removeGameFromLibrary(currentUser.getId(), gameId);
-    }
 }
