@@ -128,9 +128,13 @@ function RegisterPage() {
 function Dashboard({ token, currentUser, logout }) {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({...initialForm, publisherId: currentUser?.id, producerId: currentUser?.id});
+  const [buyingId, setBuyingId] = useState(null); // Satın alma efekti için
+  const [form, setForm] = useState({ ...initialForm, publisherId: currentUser?.id, producerId: currentUser?.id });
 
-  const authHeaders = { Authorization: `Bearer ${token}` };
+  const authHeaders = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`
+  };
 
   const loadGames = async () => {
     setLoading(true);
@@ -138,20 +142,46 @@ function Dashboard({ token, currentUser, logout }) {
       const res = await fetch("/api/games", { headers: authHeaders });
       const data = await res.json();
       setGames(data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Load error:", e); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { loadGames(); }, []);
 
+  // --- SATIN ALMA FONKSİYONU ---
+  const handleBuy = async (gameId) => {
+    setBuyingId(gameId);
+    try {
+      const response = await fetch(`/api/library`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          gameId: gameId,
+          userId: currentUser.id
+        })
+      });
+
+      if (response.ok) {
+        alert("Game purchased successfully! Check your library.");
+      } else {
+        const msg = await response.text();
+        alert("Purchase failed: " + msg);
+      }
+    } catch (e) {
+      alert("Error: " + e.message);
+    } finally {
+      setBuyingId(null);
+    }
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     await fetch("/api/games", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders },
-      body: JSON.stringify({...form, price: Number(form.price)})
+      headers: authHeaders,
+      body: JSON.stringify({ ...form, price: Number(form.price) })
     });
-    setForm({...initialForm, publisherId: currentUser?.id, producerId: currentUser?.id});
+    setForm({ ...initialForm, publisherId: currentUser?.id, producerId: currentUser?.id });
     loadGames();
   };
 
@@ -169,25 +199,36 @@ function Dashboard({ token, currentUser, logout }) {
           <section className="panel form-panel">
             <h2>Add New Game</h2>
             <form onSubmit={handleCreate} className="form-grid">
-              <input placeholder="Game Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required />
-              <textarea placeholder="Description" value={form.description} onChange={e => setForm({...form, description: e.target.value})} required />
-              <input type="number" placeholder="Price" value={form.price} onChange={e => setForm({...form, price: e.target.value})} required />
-              <input placeholder="Type (e.g. ACTION)" value={form.gameType} onChange={e => setForm({...form, gameType: e.target.value})} required />
-              <button type="submit">Create Game</button>
+              <input placeholder="Game Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+              <textarea placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} required />
+              <input type="number" placeholder="Price" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} required />
+              <input placeholder="Type (e.g. ACTION)" value={form.gameType} onChange={e => setForm({ ...form, gameType: e.target.value })} required />
+              <button type="submit" className="btn-success">Create Game</button>
             </form>
           </section>
 
           <section className="panel list-panel">
             <div className="list-header">
-              <h2>Your Library</h2>
-              <button onClick={loadGames}>Refresh</button>
+              <h2>Store Front</h2>
+              <button onClick={loadGames}>Refresh List</button>
             </div>
             <div className="cards">
               {games.map(game => (
                   <article key={game.id} className="card">
-                    <h3>{game.name}</h3>
-                    <p>{game.description}</p>
-                    <div className="badge">${game.price} - {game.gameType}</div>
+                    <div className="card-content">
+                      <h3>{game.name}</h3>
+                      <p>{game.description}</p>
+                      <div className="badge">${game.price} - {game.gameType}</div>
+                    </div>
+
+                    {/* SATIN AL BUTONU */}
+                    <button
+                        className="buy-button"
+                        onClick={() => handleBuy(game.id)}
+                        disabled={buyingId === game.id}
+                    >
+                      {buyingId === game.id ? "Processing..." : "Buy Game"}
+                    </button>
                   </article>
               ))}
             </div>
