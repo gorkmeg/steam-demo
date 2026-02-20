@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -27,12 +29,13 @@ public class UserService {
     @Transactional
     public User createUser(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("Username already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
         }
 
         User user = userMapper.toEntity(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setUserType(UserType.ROLE_USER);
+        user.setBalance(BigDecimal.ZERO);
 
         return userRepository.save(user);
     }

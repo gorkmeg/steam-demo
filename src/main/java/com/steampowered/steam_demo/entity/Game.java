@@ -20,10 +20,4 @@ public class Game {
     private LocalDateTime releaseDate = LocalDateTime.now();
     @Enumerated(EnumType.STRING)
     private GameType gameType;
-    @ManyToOne
-    @JoinColumn(name = "publisher_id")
-    private User publisher;
-    @ManyToOne
-    @JoinColumn(name = "producer_id")
-    private User producer;
 }

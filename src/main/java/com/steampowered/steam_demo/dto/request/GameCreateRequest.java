@@ -12,6 +12,4 @@ public class GameCreateRequest {
     private String description;
     private BigDecimal price;
     private GameType gameType;
-    private UUID publisherId;
-    private UUID producerId;
 }

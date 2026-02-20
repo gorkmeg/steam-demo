@@ -20,6 +20,14 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/assets/**",
+                                "/favicon.ico",
+                                "/login",
+                                "/register"
+                        ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users", "/api/users/login").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()

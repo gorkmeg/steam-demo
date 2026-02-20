@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,11 +43,12 @@ public class LibraryService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Game already exists in library");
         }
 
-        if(user.getBalance().compareTo(game.getPrice()) < 0){
+        BigDecimal currentBalance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
+        if (currentBalance.compareTo(game.getPrice()) < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient balance");
         }
 
-        user.setBalance(user.getBalance().subtract(game.getPrice()));
+        user.setBalance(currentBalance.subtract(game.getPrice()));
 
         LibraryItem libraryItem = new LibraryItem();
         libraryItem.setUser(user);

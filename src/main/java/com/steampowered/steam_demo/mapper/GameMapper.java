@@ -9,7 +9,5 @@ import org.mapstruct.Mapping;
 public interface GameMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "releaseDate", ignore = true)
-    @Mapping(target = "publisher", ignore = true)
-    @Mapping(target = "producer", ignore = true)
     Game toEntity(GameCreateRequest request);
 }
