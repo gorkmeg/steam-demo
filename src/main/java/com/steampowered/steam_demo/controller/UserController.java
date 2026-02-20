@@ -1,5 +1,6 @@
 package com.steampowered.steam_demo.controller;
 
+import com.steampowered.steam_demo.dto.request.BalanceAddRequest;
 import com.steampowered.steam_demo.dto.request.LoginRequest;
 import com.steampowered.steam_demo.dto.request.RegisterRequest;
 import com.steampowered.steam_demo.dto.response.LoginResponse;
@@ -9,8 +10,11 @@ import com.steampowered.steam_demo.mapper.UserMapper;
 import com.steampowered.steam_demo.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/users")
@@ -34,5 +38,22 @@ public class UserController {
     @GetMapping("/me")
     public UserResponse me(Authentication authentication) {
         return userService.getCurrentUser(authentication.getName());
+    }
+
+    @PostMapping("/add-balance")
+    public ResponseEntity<?> addBalance(
+            @RequestBody BalanceAddRequest request,
+            Authentication authentication
+    ){
+        String username = authentication.getName();
+
+        if(request.getBalance() == null || request.getBalance().compareTo(BigDecimal.ZERO) <= 0){
+            return ResponseEntity.badRequest().body("unaccepted balance type");
+        }
+
+        userService.addBalance(username, request.getBalance());
+
+        return ResponseEntity.ok("successful");
+
     }
 }

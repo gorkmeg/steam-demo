@@ -62,4 +62,14 @@ public class UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"));
         return userMapper.toResponse(user);
     }
+
+    @Transactional
+    public void addBalance(String username, BigDecimal amount){
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("user not found"));
+        user.setBalance(user.getBalance().add(amount));
+
+        userRepository.save(user);
+    }
+
 }
