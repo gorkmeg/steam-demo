@@ -99,16 +99,6 @@ function LoginPage({ setToken, setCurrentUser }) {
         </label>
 
         <label>
-          Display Name
-          <input
-            name="displayName"
-            value={form.displayName}
-            onChange={(e) => setForm({ ...form, displayName: e.target.value })}
-            required
-          />
-        </label>
-
-        <label>
           Password
           <input
             type="password"
@@ -205,6 +195,7 @@ function Dashboard({ token, currentUser, logout }) {
   const [storeLoading, setStoreLoading] = useState(true);
   const [libraryLoading, setLibraryLoading] = useState(true);
   const [buyingId, setBuyingId] = useState(null);
+  const [refundingId, setRefundingId] = useState(null);
   const [balanceAmount, setBalanceAmount] = useState("");
   const [balanceStatus, setBalanceStatus] = useState({ type: "", text: "" });
   const [addingBalance, setAddingBalance] = useState(false);
@@ -398,6 +389,39 @@ function Dashboard({ token, currentUser, logout }) {
     }
   };
 
+  const handleRefund = async (libraryItemId, gameName) => {
+    const confirmed = window.confirm(`Refund "${gameName}" and remove it from your library?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setRefundingId(libraryItemId);
+    try {
+      const response = await fetch(`/api/library/${libraryItemId}`, {
+        method: "DELETE",
+        headers: authHeaders
+      });
+
+      if (handleUnauthorized(response.status)) {
+        return;
+      }
+
+      if (!response.ok) {
+        const msg = await response.text();
+        alert(`Refund failed: ${msg || "Unknown error"}`);
+        return;
+      }
+
+      await loadLibrary();
+      await loadProfile();
+      alert("Refund completed successfully.");
+    } catch (err) {
+      alert(`Refund error: ${err.message}`);
+    } finally {
+      setRefundingId(null);
+    }
+  };
+
   const handleCreateGame = async (e) => {
     e.preventDefault();
 
@@ -530,7 +554,7 @@ function Dashboard({ token, currentUser, logout }) {
                 <div className="card-content">
                   <h3>{game.name}</h3>
                   <p>{game.description}</p>
-                  <div className="badge">${game.price} | {game.gameType}</div>
+                  <div className="badge">${game.price} | {game.gameType.replace("GAME_","")}</div>
                 </div>
                 <button
                   className="buy-button"
@@ -558,11 +582,18 @@ function Dashboard({ token, currentUser, logout }) {
                 <div className="card-content">
                   <h3>{item.gameName}</h3>
                   <p>{item.gameDescription}</p>
-                  <div className="badge">${item.gamePrice} | {item.gameType}</div>
+                  <div className="badge">${item.gamePrice} | {item.gameType.replace("GAME_","")}</div>
                   <p className="muted small">
                     Added: {item.addedAt ? new Date(item.addedAt).toLocaleString() : "-"}
                   </p>
                 </div>
+                <button
+                  className="buy-button"
+                  onClick={() => handleRefund(item.libraryItemId, item.gameName)}
+                  disabled={refundingId === item.libraryItemId}
+                >
+                  {refundingId === item.libraryItemId ? "Refunding..." : "Refund"}
+                </button>
               </article>
             ))}
           </div>
