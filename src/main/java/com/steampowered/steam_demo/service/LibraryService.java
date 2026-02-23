@@ -53,6 +53,7 @@ public class LibraryService {
         LibraryItem libraryItem = new LibraryItem();
         libraryItem.setUser(user);
         libraryItem.setGame(game);
+        libraryItem.setPurchasePrice(game.getPrice());
 
         return libraryMapper.toResponse(libraryRepository.save(libraryItem));
     }
@@ -63,5 +64,18 @@ public class LibraryService {
                 .stream()
                 .map(libraryMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public void refundGame(UUID userId, UUID libraryItemId) {
+        LibraryItem libraryItem = libraryRepository.findByIdAndUserId(libraryItemId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Library item not found"));
+
+        User user = libraryItem.getUser();
+        BigDecimal currentBalance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
+        BigDecimal refundAmount = libraryItem.getPurchasePrice() == null ? BigDecimal.ZERO : libraryItem.getPurchasePrice();
+        user.setBalance(currentBalance.add(refundAmount));
+
+        libraryRepository.delete(libraryItem);
     }
 }

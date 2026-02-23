@@ -7,6 +7,7 @@ import com.steampowered.steam_demo.service.LibraryService;
 import com.steampowered.steam_demo.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,5 +32,12 @@ public class LibraryController {
     public LibraryResponse addToMyLibrary(@RequestBody LibraryAddRequest request, Authentication authentication) {
         UserResponse currentUser = userService.getCurrentUser(authentication.getName());
         return libraryService.addGameToLibrary(currentUser.getId(), request);
+    }
+
+    @DeleteMapping("/{libraryItemId}")
+    public ResponseEntity<?> refundGame(@PathVariable UUID libraryItemId, Authentication authentication) {
+        UserResponse currentUser = userService.getCurrentUser(authentication.getName());
+        libraryService.refundGame(currentUser.getId(), libraryItemId);
+        return ResponseEntity.ok("Game refunded successfully");
     }
 }

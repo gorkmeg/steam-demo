@@ -3,6 +3,8 @@ package com.steampowered.steam_demo.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -19,4 +21,17 @@ public class LibraryItem {
     @ManyToOne
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
+
+    @Column(nullable = false)
+    private BigDecimal purchasePrice;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime addedAt;
+
+    @PrePersist
+    void prePersist() {
+        if (addedAt == null) {
+            addedAt = LocalDateTime.now();
+        }
+    }
 }

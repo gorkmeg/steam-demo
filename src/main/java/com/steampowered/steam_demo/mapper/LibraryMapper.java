@@ -12,8 +12,8 @@ public interface LibraryMapper {
     @Mapping(target = "gameId", source = "game.id")
     @Mapping(target = "gameName", source = "game.name")
     @Mapping(target = "gameDescription", source = "game.description")
-    @Mapping(target = "gamePrice", source = "game.price")
+    @Mapping(target = "gamePrice", source = "purchasePrice")
     @Mapping(target = "gameType", source = "game.gameType")
-    @Mapping(target = "addedAt", ignore = true)
+    @Mapping(target = "addedAt", source = "addedAt")
     LibraryResponse toResponse(LibraryItem libraryItem);
 }
