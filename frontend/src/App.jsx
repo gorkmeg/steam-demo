@@ -166,6 +166,16 @@ function RegisterPage() {
         </label>
 
         <label>
+          Display Name
+          <input
+            name="displayName"
+            value={form.displayName}
+            onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+            required
+          />
+        </label>
+
+        <label>
           Password
           <input
             type="password"

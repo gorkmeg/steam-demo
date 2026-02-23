@@ -66,25 +66,28 @@ public class UserService {
     @Transactional
     public void addBalance(String username, BigDecimal amount){
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("user not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.setBalance(user.getBalance().add(amount));
-
-        userRepository.save(user);
     }
 
     @Transactional
     public void updateDisplayName(String username, String newDisplayName) {
-        if (newDisplayName == null || newDisplayName.trim().isEmpty()) {
-            throw new IllegalArgumentException("Display name cannot be empty");
+        if (newDisplayName == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Display name cannot be empty");
         }
 
-        if (newDisplayName.length() > 50) {
-            throw new IllegalArgumentException("Display name too long");
+        String normalizedDisplayName = newDisplayName.trim();
+        if (normalizedDisplayName.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Display name cannot be empty");
+        }
+
+        if (normalizedDisplayName.length() > 50) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Display name too long");
         }
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        user.setDisplayName(newDisplayName.trim());
+        user.setDisplayName(normalizedDisplayName);
     }
 }
