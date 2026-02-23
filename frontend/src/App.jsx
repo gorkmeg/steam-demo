@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Link, Navigate, Route, Routes, useNavigate } f
 
 const gameTypeOptions = ["GAME_SIMULATION", "GAME_STRATEGY", "GAME_SPORT"];
 const initialGameForm = { name: "", description: "", price: "", gameType: "" };
-const initialAuthForm = { username: "", password: "" };
+const initialAuthForm = { username: "", displayName: "", password: "" };
 
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem("auth_token") || "");
@@ -45,7 +45,7 @@ function App() {
 }
 
 function LoginPage({ setToken, setCurrentUser }) {
-  const [form, setForm] = useState(initialAuthForm);
+  const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -94,6 +94,16 @@ function LoginPage({ setToken, setCurrentUser }) {
             name="username"
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
+            required
+          />
+        </label>
+
+        <label>
+          Display Name
+          <input
+            name="displayName"
+            value={form.displayName}
+            onChange={(e) => setForm({ ...form, displayName: e.target.value })}
             required
           />
         </label>
@@ -189,6 +199,9 @@ function Dashboard({ token, currentUser, logout }) {
   const [games, setGames] = useState([]);
   const [library, setLibrary] = useState([]);
   const [profile, setProfile] = useState(currentUser);
+  const [displayNameInput, setDisplayNameInput] = useState(currentUser?.displayName || "");
+  const [updatingDisplayName, setUpdatingDisplayName] = useState(false);
+  const [displayNameStatus, setDisplayNameStatus] = useState({ type: "", text: "" });
   const [storeLoading, setStoreLoading] = useState(true);
   const [libraryLoading, setLibraryLoading] = useState(true);
   const [buyingId, setBuyingId] = useState(null);
@@ -288,7 +301,44 @@ function Dashboard({ token, currentUser, logout }) {
 
   useEffect(() => {
     setProfile(currentUser);
+    setDisplayNameInput(currentUser?.displayName || "");
   }, [currentUser]);
+
+  const handleUpdateDisplayName = async (e) => {
+    e.preventDefault();
+    setDisplayNameStatus({ type: "", text: "" });
+
+    if (!displayNameInput.trim()) {
+      setDisplayNameStatus({ type: "error", text: "Display name cannot be empty." });
+      return;
+    }
+
+    setUpdatingDisplayName(true);
+    try {
+      const response = await fetch("/api/users/update-display-name", {
+        method: "PUT",
+        headers: authHeaders,
+        body: JSON.stringify({ displayName: displayNameInput })
+      });
+
+      if (handleUnauthorized(response.status)) {
+        return;
+      }
+
+      if (!response.ok) {
+        const msg = await response.text();
+        setDisplayNameStatus({ type: "error", text: msg || "Could not update display name." });
+        return;
+      }
+
+      setDisplayNameStatus({ type: "success", text: "Display name updated successfully." });
+      await loadProfile();
+    } catch (err) {
+      setDisplayNameStatus({ type: "error", text: "Error while updating display name." });
+    } finally {
+      setUpdatingDisplayName(false);
+    }
+  };
 
   const handleBuy = async (gameId) => {
     setBuyingId(gameId);
@@ -377,7 +427,7 @@ function Dashboard({ token, currentUser, logout }) {
       <header className="hero dashboard-hero">
         <p className="eyebrow">Control Center</p>
         <div className="user-nav">
-          <h1>Welcome, {profile?.username || currentUser?.username}</h1>
+          <h1>Welcome, {profile?.displayName || currentUser?.username}</h1>
           <p className="balance-chip">Current Balance: ${formattedBalance}</p>
           <button className="btn-sm" onClick={logout}>Logout</button>
         </div>
@@ -386,6 +436,25 @@ function Dashboard({ token, currentUser, logout }) {
 
       <main className="layout">
         <section className="side-column">
+          <section className="panel balance-panel">
+            <h2>Profile</h2>
+            <form onSubmit={handleUpdateDisplayName} className="form-grid">
+              <input
+                type="text"
+                placeholder="Display name"
+                value={displayNameInput}
+                onChange={(e) => setDisplayNameInput(e.target.value)}
+                required
+              />
+              <button type="submit" disabled={updatingDisplayName}>
+                {updatingDisplayName ? "Saving..." : "Update Display Name"}
+              </button>
+            </form>
+            {displayNameStatus.text ? (
+              <p className={displayNameStatus.type === "error" ? "error" : "success"}>{displayNameStatus.text}</p>
+            ) : null}
+          </section>
+
           <section className="panel balance-panel">
             <h2>Add Balance</h2>
             <form onSubmit={handleAddBalance} className="form-grid">
@@ -439,7 +508,7 @@ function Dashboard({ token, currentUser, logout }) {
                 >
                   <option value="" disabled>Select game type</option>
                   {gameTypeOptions.map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>{type.replace("GAME_","")}</option>
                   ))}
                 </select>
                 <button type="submit">Create Game</button>
