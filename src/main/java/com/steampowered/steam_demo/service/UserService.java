@@ -72,4 +72,19 @@ public class UserService {
         userRepository.save(user);
     }
 
+    @Transactional
+    public void updateDisplayName(String username, String newDisplayName) {
+        if (newDisplayName == null || newDisplayName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Display name cannot be empty");
+        }
+
+        if (newDisplayName.length() > 50) {
+            throw new IllegalArgumentException("Display name too long");
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setDisplayName(newDisplayName.trim());
+    }
 }

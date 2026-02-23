@@ -16,6 +16,8 @@ public class User {
     @Column(unique = true)
     private String username;
     private String password;
+    @Column(nullable = false)
+    private String displayName;
     private BigDecimal balance;
     @Enumerated(EnumType.STRING)
     private UserType userType = UserType.ROLE_USER;

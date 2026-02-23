@@ -1,6 +1,7 @@
 package com.steampowered.steam_demo.controller;
 
 import com.steampowered.steam_demo.dto.request.BalanceAddRequest;
+import com.steampowered.steam_demo.dto.request.DisplayNameUpdateRequest;
 import com.steampowered.steam_demo.dto.request.LoginRequest;
 import com.steampowered.steam_demo.dto.request.RegisterRequest;
 import com.steampowered.steam_demo.dto.response.LoginResponse;
@@ -55,5 +56,14 @@ public class UserController {
 
         return ResponseEntity.ok("successful");
 
+    }
+
+    @PutMapping("/update-display-name")
+    public ResponseEntity<?> updateDisplayName(@RequestBody
+        DisplayNameUpdateRequest request,
+        Authentication authentication){
+        String username = authentication.getName();
+        userService.updateDisplayName(username, request.getDisplayName());
+        return ResponseEntity.ok("display name updated");
     }
 }
