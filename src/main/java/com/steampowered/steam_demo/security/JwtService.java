@@ -4,6 +4,7 @@ import com.steampowered.steam_demo.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ import java.util.Map;
 @Service
 public class JwtService {
     private final SecretKey signingKey;
+    @Getter
     private final long expirationMs;
 
     public JwtService(
@@ -46,10 +48,6 @@ public class JwtService {
     public boolean isTokenValid(String token) {
         Date expiration = extractClaims(token).getExpiration();
         return expiration != null && expiration.after(new Date());
-    }
-
-    public long getExpirationMs() {
-        return expirationMs;
     }
 
     private Claims extractClaims(String token) {
