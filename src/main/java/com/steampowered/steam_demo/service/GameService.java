@@ -24,7 +24,6 @@ public class GameService {
     private final UserRepository userRepository;
     private final GameMapper gameMapper;
 
-    @Transactional
     public Game createGame(GameCreateRequest request, String username) {
         User creator = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"));
@@ -37,10 +36,7 @@ public class GameService {
             );
         }
 
-
-        Game game = gameMapper.toEntity(request);
-
-        return gameRepository.save(game);
+        return gameRepository.save(gameMapper.toEntity(request));
     }
 
     @Transactional(readOnly = true)

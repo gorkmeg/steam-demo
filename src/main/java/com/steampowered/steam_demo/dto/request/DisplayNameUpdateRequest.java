@@ -1,8 +1,12 @@
 package com.steampowered.steam_demo.dto.request;
 
-import lombok.Data;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class DisplayNameUpdateRequest {
+    @NotBlank(message = "Display Name cannot be blank.")
     private String displayName;
 }

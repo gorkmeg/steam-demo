@@ -29,10 +29,6 @@ public class LibraryService {
 
     @Transactional
     public LibraryResponse addGameToLibrary(UUID userId, LibraryAddRequest request) {
-        if (request == null || request.getGameId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "gameId is required");
-        }
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
