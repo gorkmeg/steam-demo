@@ -45,7 +45,7 @@ public class LibraryService {
 
         BigDecimal currentBalance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
         if (currentBalance.compareTo(game.getPrice()) < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient balance");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Insufficient balance");
         }
 
         user.setBalance(currentBalance.subtract(game.getPrice()));
