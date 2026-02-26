@@ -17,7 +17,7 @@ import java.util.UUID;
 public class GameController {
     private final GameService gameService;
 
-    @PostMapping
+    @PostMapping("/create-game")
     @ResponseStatus(HttpStatus.CREATED)
     public Game createGame(@RequestBody GameCreateRequest request, Authentication authentication) {
         return gameService.createGame(request, authentication.getName());

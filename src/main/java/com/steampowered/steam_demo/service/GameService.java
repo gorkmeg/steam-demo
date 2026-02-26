@@ -26,16 +26,16 @@ public class GameService {
 
     @Transactional
     public Game createGame(GameCreateRequest request, String username) {
-        User creator = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"));
+//        User user = userRepository.findByUsername(username)
+//                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
 
-        UserType role = creator.getUserType();
-        if (role != UserType.ROLE_PUBLISHER && role != UserType.ROLE_PRODUCER) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Only publisher or producer can create games"
-            );
-        }
+//        UserType role = creator.getUserType();
+//        if (role != UserType.ROLE_PUBLISHER && role != UserType.ROLE_PRODUCER) {
+//            throw new ResponseStatusException(
+//                    HttpStatus.FORBIDDEN,
+//                    "Only publisher or producer can create games"
+//            );
+//        }
 
 
         Game game = gameMapper.toEntity(request);

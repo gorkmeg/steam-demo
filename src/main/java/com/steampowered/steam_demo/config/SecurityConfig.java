@@ -28,6 +28,7 @@ public class SecurityConfig {
                                 "/login",
                                 "/register"
                         ).permitAll()
+                        .requestMatchers("/api/games/create-game").hasAnyAuthority("ROLE_PUBLISHER", "ROLE_PRODUCER")
                         .requestMatchers(HttpMethod.POST, "/api/users", "/api/users/login").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
