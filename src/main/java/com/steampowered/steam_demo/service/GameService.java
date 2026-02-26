@@ -21,25 +21,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class GameService {
     private final GameRepository gameRepository;
-    private final UserRepository userRepository;
     private final GameMapper gameMapper;
 
     @Transactional
     public Game createGame(GameCreateRequest request, String username) {
-//        User user = userRepository.findByUsername(username)
-//                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
-
-//        UserType role = creator.getUserType();
-//        if (role != UserType.ROLE_PUBLISHER && role != UserType.ROLE_PRODUCER) {
-//            throw new ResponseStatusException(
-//                    HttpStatus.FORBIDDEN,
-//                    "Only publisher or producer can create games"
-//            );
-//        }
-
-
         Game game = gameMapper.toEntity(request);
-
         return gameRepository.save(game);
     }
 

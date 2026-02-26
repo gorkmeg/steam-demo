@@ -440,7 +440,7 @@ function Dashboard({ token, currentUser, logout }) {
       return;
     }
 
-    const response = await fetch("/api/games", {
+    const response = await fetch("/api/games/create-game", {
       method: "POST",
       headers: authHeaders,
       body: JSON.stringify({ ...gameForm, price: Number(gameForm.price) })
