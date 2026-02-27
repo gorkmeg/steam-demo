@@ -2,9 +2,9 @@ package com.steampowered.steam_demo.service;
 
 import com.steampowered.steam_demo.dto.request.GameCreateRequest;
 import com.steampowered.steam_demo.entity.Game;
+import com.steampowered.steam_demo.exception.domain.GameNotFoundException;
 import com.steampowered.steam_demo.mapper.GameMapper;
 import com.steampowered.steam_demo.repository.GameRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +32,6 @@ public class GameService {
     @Transactional(readOnly = true)
     public Game getGameById(UUID gameId) {
         return gameRepository.findById(gameId)
-                .orElseThrow(() -> new EntityNotFoundException("Game not found: " + gameId));
+                .orElseThrow(() -> new GameNotFoundException(gameId));
     }
 }

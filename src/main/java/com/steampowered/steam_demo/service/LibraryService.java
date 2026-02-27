@@ -5,17 +5,16 @@ import com.steampowered.steam_demo.dto.response.LibraryResponse;
 import com.steampowered.steam_demo.entity.Game;
 import com.steampowered.steam_demo.entity.LibraryItem;
 import com.steampowered.steam_demo.entity.User;
+import com.steampowered.steam_demo.exception.domain.GameNotFoundException;
+import com.steampowered.steam_demo.exception.domain.LibraryItemNotFoundException;
+import com.steampowered.steam_demo.exception.domain.UserNotFoundException;
 import com.steampowered.steam_demo.mapper.LibraryMapper;
 import com.steampowered.steam_demo.repository.GameRepository;
 import com.steampowered.steam_demo.repository.LibraryRepository;
 import com.steampowered.steam_demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,29 +28,13 @@ public class LibraryService {
 
     @Transactional
     public LibraryResponse addGameToLibrary(UUID userId, LibraryAddRequest request) {
-        if (request == null || request.getGameId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "gameId is required");
-        }
-
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-
+                .orElseThrow(UserNotFoundException::new);
         Game game = gameRepository.findById(request.getGameId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Game not found"));
-
-        if (libraryRepository.existsByUserIdAndGameId(userId, game.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Game already exists in library");
-        }
-
-        BigDecimal currentBalance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
-        if (currentBalance.compareTo(game.getPrice()) < 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Insufficient balance");
-        }
-
-        libraryMapper.updateUserBalance(user, currentBalance.subtract(game.getPrice()));
+                .orElseThrow(GameNotFoundException::new);
+        user.purchase(game.getPrice());
 
         LibraryItem libraryItem = libraryMapper.toEntity(request, user, game);
-
         return libraryMapper.toResponse(libraryRepository.save(libraryItem));
     }
 
@@ -66,12 +49,10 @@ public class LibraryService {
     @Transactional
     public void refundGame(UUID userId, UUID libraryItemId) {
         LibraryItem libraryItem = libraryRepository.findByIdAndUserId(libraryItemId, userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Library item not found"));
+                .orElseThrow(LibraryItemNotFoundException::new);
 
         User user = libraryItem.getUser();
-        BigDecimal currentBalance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
-        BigDecimal refundAmount = libraryItem.getPurchasePrice() == null ? BigDecimal.ZERO : libraryItem.getPurchasePrice();
-        libraryMapper.updateUserBalance(user, currentBalance.add(refundAmount));
+        user.refund(libraryItem.refundAmount());
 
         libraryRepository.delete(libraryItem);
     }
