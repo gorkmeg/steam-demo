@@ -213,7 +213,7 @@ function Dashboard({ token, currentUser, logout }) {
   const navigate = useNavigate();
 
   const canCreateGame = useMemo(
-    () => currentUser?.userType === "ROLE_PUBLISHER" || currentUser?.userType === "ROLE_PRODUCER",
+    () => currentUser?.userType === "ROLE_PUBLISHER" || currentUser?.userType === "ROLE_PRODUCER" || currentUser?.userType === "ROLE_ADMIN",
     [currentUser]
   );
 
