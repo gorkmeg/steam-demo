@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -57,21 +58,21 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getCurrentUser(String username) {
-        User user = userRepository.findByUsername(username)
+    public UserResponse getCurrentUser(UUID userId) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"));
         return userMapper.toResponse(user);
     }
 
     @Transactional
-    public void addBalance(String username, BigDecimal amount){
-        User user = userRepository.findByUsername(username)
+    public void addBalance(UUID userId, BigDecimal amount){
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.setBalance(user.getBalance().add(amount));
     }
 
     @Transactional
-    public void updateDisplayName(String username, String newDisplayName) {
+    public void updateDisplayName(UUID userId, String newDisplayName) {
         if (newDisplayName == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Display name cannot be empty");
         }
@@ -85,7 +86,7 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Display name too long");
         }
 
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         user.setDisplayName(normalizedDisplayName);

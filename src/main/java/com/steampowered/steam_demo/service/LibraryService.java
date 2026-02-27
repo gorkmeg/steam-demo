@@ -45,15 +45,12 @@ public class LibraryService {
 
         BigDecimal currentBalance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
         if (currentBalance.compareTo(game.getPrice()) < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient balance");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Insufficient balance");
         }
 
-        user.setBalance(currentBalance.subtract(game.getPrice()));
+        libraryMapper.updateUserBalance(user, currentBalance.subtract(game.getPrice()));
 
-        LibraryItem libraryItem = new LibraryItem();
-        libraryItem.setUser(user);
-        libraryItem.setGame(game);
-        libraryItem.setPurchasePrice(game.getPrice());
+        LibraryItem libraryItem = libraryMapper.toEntity(request, user, game);
 
         return libraryMapper.toResponse(libraryRepository.save(libraryItem));
     }
@@ -74,7 +71,7 @@ public class LibraryService {
         User user = libraryItem.getUser();
         BigDecimal currentBalance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
         BigDecimal refundAmount = libraryItem.getPurchasePrice() == null ? BigDecimal.ZERO : libraryItem.getPurchasePrice();
-        user.setBalance(currentBalance.add(refundAmount));
+        libraryMapper.updateUserBalance(user, currentBalance.add(refundAmount));
 
         libraryRepository.delete(libraryItem);
     }

@@ -8,11 +8,12 @@ import com.steampowered.steam_demo.dto.response.LoginResponse;
 import com.steampowered.steam_demo.dto.response.UserResponse;
 import com.steampowered.steam_demo.entity.User;
 import com.steampowered.steam_demo.mapper.UserMapper;
+import com.steampowered.steam_demo.security.UserPrincipal;
 import com.steampowered.steam_demo.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -37,22 +38,20 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public UserResponse me(Authentication authentication) {
-        return userService.getCurrentUser(authentication.getName());
+    public UserResponse me(@AuthenticationPrincipal UserPrincipal principal) {
+        return userService.getCurrentUser(principal.id());
     }
 
     @PostMapping("/add-balance")
     public ResponseEntity<?> addBalance(
             @RequestBody BalanceAddRequest request,
-            Authentication authentication
+            @AuthenticationPrincipal UserPrincipal principal
     ){
-        String username = authentication.getName();
-
         if(request.getBalance() == null || request.getBalance().compareTo(BigDecimal.ZERO) <= 0){
             return ResponseEntity.badRequest().body("unaccepted balance type");
         }
 
-        userService.addBalance(username, request.getBalance());
+        userService.addBalance(principal.id(), request.getBalance());
 
         return ResponseEntity.ok("successful");
 
@@ -61,9 +60,8 @@ public class UserController {
     @PutMapping("/update-display-name")
     public ResponseEntity<?> updateDisplayName(@RequestBody
         DisplayNameUpdateRequest request,
-        Authentication authentication){
-        String username = authentication.getName();
-        userService.updateDisplayName(username, request.getDisplayName());
+        @AuthenticationPrincipal UserPrincipal principal){
+        userService.updateDisplayName(principal.id(), request.getDisplayName());
         return ResponseEntity.ok("display name updated");
     }
 }

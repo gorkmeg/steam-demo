@@ -216,6 +216,12 @@ function Dashboard({ token, currentUser, logout }) {
     () => currentUser?.userType === "ROLE_PUBLISHER" || currentUser?.userType === "ROLE_PRODUCER",
     [currentUser]
   );
+
+  const ownedGameIds = useMemo(() => {
+    return new Set(library.map((item) => item.gameId).filter(Boolean));
+  }, [library]);
+
+  const isOwned = (gameId) => ownedGameIds.has(gameId);
   const formattedBalance = useMemo(() => {
     const numericBalance = Number(profile?.balance ?? 0);
     return Number.isFinite(numericBalance) ? numericBalance.toFixed(2) : "0.00";
@@ -440,7 +446,7 @@ function Dashboard({ token, currentUser, logout }) {
       return;
     }
 
-    const response = await fetch("/api/games", {
+    const response = await fetch("/api/games/create-game", {
       method: "POST",
       headers: authHeaders,
       body: JSON.stringify({ ...gameForm, price: Number(gameForm.price) })
@@ -567,11 +573,16 @@ function Dashboard({ token, currentUser, logout }) {
                   <div className="badge">${game.price} | {game.gameType.replace("GAME_","")}</div>
                 </div>
                 <button
-                  className="buy-button"
-                  onClick={() => handleBuy(game.id)}
-                  disabled={buyingId === game.id}
+                    className="buy-button"
+                    onClick={() => handleBuy(game.id)}
+                    disabled={isOwned(game.id) || buyingId === game.id}
+                    title={isOwned(game.id) ? "You already own this game" : ""}
                 >
-                  {buyingId === game.id ? "Processing..." : "Buy Game"}
+                  {isOwned(game.id)
+                      ? "In Library"
+                      : buyingId === game.id
+                          ? "Processing..."
+                          : "Buy Game"}
                 </button>
               </article>
             ))}
