@@ -1,12 +1,28 @@
 package com.steampowered.steam_demo.mapper;
 
+import com.steampowered.steam_demo.dto.request.LibraryAddRequest;
+import com.steampowered.steam_demo.entity.Game;
 import com.steampowered.steam_demo.dto.response.LibraryResponse;
 import com.steampowered.steam_demo.entity.LibraryItem;
+import com.steampowered.steam_demo.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+
+import java.math.BigDecimal;
 
 @Mapper(componentModel = "spring")
 public interface LibraryMapper {
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "addedAt", ignore = true)
+    @Mapping(target = "user", source = "user")
+    @Mapping(target = "game", source = "game")
+    @Mapping(target = "purchasePrice", source = "game.price")
+    LibraryItem toEntity(LibraryAddRequest request, User user, Game game);
+
+    @Mapping(target = "balance", source = "balance")
+    void updateUserBalance(@MappingTarget User user, BigDecimal balance);
+
     @Mapping(target = "libraryItemId", source = "id")
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "gameId", source = "game.id")
