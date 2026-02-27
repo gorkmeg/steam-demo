@@ -5,14 +5,13 @@ import com.steampowered.steam_demo.dto.response.LibraryResponse;
 import com.steampowered.steam_demo.entity.Game;
 import com.steampowered.steam_demo.entity.LibraryItem;
 import com.steampowered.steam_demo.entity.User;
-import com.steampowered.steam_demo.exception.domain.GameNotFoundException;
-import com.steampowered.steam_demo.exception.domain.LibraryItemNotFoundException;
-import com.steampowered.steam_demo.exception.domain.UserNotFoundException;
+import com.steampowered.steam_demo.exception.domain.ApiDomainException;
 import com.steampowered.steam_demo.mapper.LibraryMapper;
 import com.steampowered.steam_demo.repository.GameRepository;
 import com.steampowered.steam_demo.repository.LibraryRepository;
 import com.steampowered.steam_demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -29,9 +28,9 @@ public class LibraryService {
     @Transactional
     public LibraryResponse addGameToLibrary(UUID userId, LibraryAddRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+                .orElseThrow(() -> new ApiDomainException(HttpStatus.NOT_FOUND, "User not found"));
         Game game = gameRepository.findById(request.getGameId())
-                .orElseThrow(GameNotFoundException::new);
+                .orElseThrow(() -> new ApiDomainException(HttpStatus.NOT_FOUND, "Game not found"));
         user.purchase(game.getPrice());
 
         LibraryItem libraryItem = libraryMapper.toEntity(request, user, game);
@@ -49,7 +48,7 @@ public class LibraryService {
     @Transactional
     public void refundGame(UUID userId, UUID libraryItemId) {
         LibraryItem libraryItem = libraryRepository.findByIdAndUserId(libraryItemId, userId)
-                .orElseThrow(LibraryItemNotFoundException::new);
+                .orElseThrow(() -> new ApiDomainException(HttpStatus.NOT_FOUND, "Library item not found"));
 
         User user = libraryItem.getUser();
         user.refund(libraryItem.refundAmount());

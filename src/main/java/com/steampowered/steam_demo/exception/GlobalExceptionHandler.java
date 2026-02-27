@@ -1,8 +1,6 @@
 package com.steampowered.steam_demo.exception;
 
-import com.steampowered.steam_demo.exception.domain.AlreadyOwnedException;
 import com.steampowered.steam_demo.exception.domain.ApiDomainException;
-import com.steampowered.steam_demo.exception.domain.UsernameAlreadyExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -83,13 +81,13 @@ public class GlobalExceptionHandler {
     private String extractConstraintMessage(DataIntegrityViolationException ex) {
         String details = extractCauseMessage(ex).toLowerCase();
         if (details.contains("uk_users_username") || details.contains("users_username_key")) {
-            return new UsernameAlreadyExistsException().getMessage();
+            return "Username already exists";
         }
         if (details.contains("uk_library_items_user_game")) {
-            return new AlreadyOwnedException().getMessage();
+            return "Game already exists in library";
         }
         if (details.contains("library_items") && details.contains("user_id") && details.contains("game_id")) {
-            return new AlreadyOwnedException().getMessage();
+            return "Game already exists in library";
         }
         return "Data integrity violation";
     }

@@ -6,14 +6,13 @@ import com.steampowered.steam_demo.dto.request.RegisterRequest;
 import com.steampowered.steam_demo.dto.response.LoginResponse;
 import com.steampowered.steam_demo.dto.response.UserResponse;
 import com.steampowered.steam_demo.entity.User;
-import com.steampowered.steam_demo.exception.domain.InvalidCredentialsException;
-import com.steampowered.steam_demo.exception.domain.InvalidTokenException;
-import com.steampowered.steam_demo.exception.domain.UserNotFoundException;
+import com.steampowered.steam_demo.exception.domain.ApiDomainException;
 import com.steampowered.steam_demo.mapper.AuthMapper;
 import com.steampowered.steam_demo.mapper.UserMapper;
 import com.steampowered.steam_demo.repository.UserRepository;
 import com.steampowered.steam_demo.security.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,10 +39,10 @@ public class UserService {
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(InvalidCredentialsException::new);
+                .orElseThrow(() -> new ApiDomainException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new InvalidCredentialsException();
+            throw new ApiDomainException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         }
 
         return authMapper.toLoginResponse(
@@ -56,7 +55,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(InvalidTokenException::new);
+                .orElseThrow(() -> new ApiDomainException(HttpStatus.UNAUTHORIZED, "Invalid token"));
         return userMapper.toResponse(user);
     }
 
@@ -75,6 +74,6 @@ public class UserService {
 
     private User findUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+                .orElseThrow(() -> new ApiDomainException(HttpStatus.NOT_FOUND, "User not found"));
     }
 }

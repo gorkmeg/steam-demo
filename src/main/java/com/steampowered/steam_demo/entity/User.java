@@ -1,9 +1,9 @@
 package com.steampowered.steam_demo.entity;
 
-import com.steampowered.steam_demo.exception.domain.DisplayNameTooLongException;
-import com.steampowered.steam_demo.exception.domain.InsufficientBalanceException;
+import com.steampowered.steam_demo.exception.domain.ApiDomainException;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -40,7 +40,7 @@ public class User {
     public void purchase(BigDecimal price) {
         BigDecimal currentBalance = currentBalance();
         if (currentBalance.compareTo(price) < 0) {
-            throw new InsufficientBalanceException();
+            throw new ApiDomainException(HttpStatus.CONFLICT, "Insufficient balance");
         }
         balance = currentBalance.subtract(price);
     }
@@ -52,7 +52,7 @@ public class User {
     public void changeDisplayName(String displayName) {
         String normalizedDisplayName = displayName.trim();
         if (normalizedDisplayName.length() > DISPLAY_NAME_MAX_LENGTH) {
-            throw new DisplayNameTooLongException();
+            throw new ApiDomainException(HttpStatus.BAD_REQUEST, "Display name too long");
         }
         this.displayName = normalizedDisplayName;
     }
