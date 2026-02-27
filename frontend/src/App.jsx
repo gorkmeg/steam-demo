@@ -38,6 +38,20 @@ function App() {
             path="/"
             element={token ? <Dashboard token={token} currentUser={currentUser} logout={logout} /> : <Navigate to="/login" />}
           />
+          <Route
+            path="/admin"
+            element={
+              token ? (
+                currentUser?.userType === "ROLE_ADMIN" ? (
+                  <AdminPanel token={token} currentUser={currentUser} logout={logout} />
+                ) : (
+                  <Navigate to="/" />
+                )
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
         </Routes>
       </div>
     </Router>
@@ -215,6 +229,10 @@ function Dashboard({ token, currentUser, logout }) {
   const canCreateGame = useMemo(
     () => currentUser?.userType === "ROLE_PUBLISHER" || currentUser?.userType === "ROLE_PRODUCER" || currentUser?.userType === "ROLE_ADMIN",
     [currentUser]
+  );
+  const isAdmin = useMemo(
+    () => currentUser?.userType === "ROLE_ADMIN" || profile?.userType === "ROLE_ADMIN",
+    [currentUser, profile]
   );
 
   const ownedGameIds = useMemo(() => {
@@ -469,7 +487,14 @@ function Dashboard({ token, currentUser, logout }) {
         <div className="user-nav">
           <h1>Welcome, {profile?.displayName || currentUser?.username}</h1>
           <p className="balance-chip">Current Balance: ${formattedBalance}</p>
-          <button className="btn-sm" onClick={logout}>Logout</button>
+          <div className="user-actions">
+            {isAdmin ? (
+              <button className="btn-sm btn-admin" onClick={() => navigate("/admin")}>
+                Admin Panel
+              </button>
+            ) : null}
+            <button className="btn-sm" onClick={logout}>Logout</button>
+          </div>
         </div>
         <p className="sub">Browse the store, buy games, and track your personal library in one place.</p>
       </header>
@@ -614,6 +639,237 @@ function Dashboard({ token, currentUser, logout }) {
                   disabled={refundingId === item.libraryItemId}
                 >
                   {refundingId === item.libraryItemId ? "Refunding..." : "Refund"}
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function AdminPanel({ token, currentUser, logout }) {
+  const [games, setGames] = useState([]);
+  const [loadingGames, setLoadingGames] = useState(true);
+  const [deletingGameId, setDeletingGameId] = useState(null);
+  const [deleteUserId, setDeleteUserId] = useState("");
+  const [updateUserForm, setUpdateUserForm] = useState({ id: "", name: "" });
+  const [userActionStatus, setUserActionStatus] = useState({ type: "", text: "" });
+  const navigate = useNavigate();
+
+  const authHeaders = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`
+  };
+
+  const handleUnauthorized = (status) => {
+    if (status === 401 || status === 403) {
+      logout();
+      navigate("/login");
+      return true;
+    }
+    return false;
+  };
+
+  const loadGames = async () => {
+    setLoadingGames(true);
+    try {
+      const res = await fetch("/api/games", { headers: authHeaders });
+      if (handleUnauthorized(res.status)) {
+        return;
+      }
+      if (!res.ok) {
+        setGames([]);
+        return;
+      }
+      const data = await res.json();
+      setGames(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Load admin games error:", err);
+      setGames([]);
+    } finally {
+      setLoadingGames(false);
+    }
+  };
+
+  useEffect(() => {
+    loadGames();
+  }, [token]);
+
+  const handleDeleteGame = async (gameId, gameName) => {
+    if (!window.confirm(`Delete "${gameName}" permanently?`)) {
+      return;
+    }
+
+    setDeletingGameId(gameId);
+    try {
+      const res = await fetch(`/api/admin/delete-game?id=${encodeURIComponent(gameId)}`, {
+        method: "DELETE",
+        headers: authHeaders
+      });
+
+      if (handleUnauthorized(res.status)) {
+        return;
+      }
+      if (!res.ok) {
+        const msg = await res.text();
+        alert(`Delete game failed: ${msg || "Unknown error"}`);
+        return;
+      }
+
+      await loadGames();
+    } catch (err) {
+      alert(`Delete game error: ${err.message}`);
+    } finally {
+      setDeletingGameId(null);
+    }
+  };
+
+  const handleDeleteUser = async (e) => {
+    e.preventDefault();
+    setUserActionStatus({ type: "", text: "" });
+
+    if (!deleteUserId.trim()) {
+      setUserActionStatus({ type: "error", text: "User id is required." });
+      return;
+    }
+
+    if (!window.confirm(`Delete user ${deleteUserId}? This action is permanent.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/delete-user?id=${encodeURIComponent(deleteUserId)}`, {
+        method: "DELETE",
+        headers: authHeaders
+      });
+
+      if (handleUnauthorized(res.status)) {
+        return;
+      }
+      if (!res.ok) {
+        const msg = await res.text();
+        setUserActionStatus({ type: "error", text: msg || "Delete user failed." });
+        return;
+      }
+
+      setDeleteUserId("");
+      setUserActionStatus({ type: "success", text: "User deleted successfully." });
+    } catch (err) {
+      setUserActionStatus({ type: "error", text: "Delete user request failed." });
+    }
+  };
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault();
+    setUserActionStatus({ type: "", text: "" });
+
+    if (!updateUserForm.id.trim() || !updateUserForm.name.trim()) {
+      setUserActionStatus({ type: "error", text: "User id and display name are required." });
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/update-user", {
+        method: "PUT",
+        headers: authHeaders,
+        body: JSON.stringify(updateUserForm)
+      });
+
+      if (handleUnauthorized(res.status)) {
+        return;
+      }
+      if (!res.ok) {
+        const msg = await res.text();
+        setUserActionStatus({ type: "error", text: msg || "Update user failed." });
+        return;
+      }
+
+      setUpdateUserForm({ id: "", name: "" });
+      setUserActionStatus({ type: "success", text: "User updated successfully." });
+    } catch (err) {
+      setUserActionStatus({ type: "error", text: "Update user request failed." });
+    }
+  };
+
+  return (
+    <div className="layout-wrapper">
+      <header className="hero dashboard-hero">
+        <p className="eyebrow">Administration</p>
+        <div className="user-nav">
+          <h1>Admin Panel - {currentUser?.displayName || currentUser?.username}</h1>
+          <div className="user-actions">
+            <button className="btn-sm btn-admin" onClick={() => navigate("/")}>Dashboard</button>
+            <button className="btn-sm" onClick={logout}>Logout</button>
+          </div>
+        </div>
+        <p className="sub">Manage users and game records from one place.</p>
+      </header>
+
+      <main className="layout">
+        <section className="side-column">
+          <section className="panel balance-panel">
+            <h2>Update User Display Name</h2>
+            <form onSubmit={handleUpdateUser} className="form-grid">
+              <input
+                type="text"
+                placeholder="User UUID"
+                value={updateUserForm.id}
+                onChange={(e) => setUpdateUserForm({ ...updateUserForm, id: e.target.value })}
+                required
+              />
+              <input
+                type="text"
+                placeholder="New display name"
+                value={updateUserForm.name}
+                onChange={(e) => setUpdateUserForm({ ...updateUserForm, name: e.target.value })}
+                required
+              />
+              <button type="submit">Update User</button>
+            </form>
+          </section>
+
+          <section className="panel balance-panel">
+            <h2>Delete User</h2>
+            <form onSubmit={handleDeleteUser} className="form-grid">
+              <input
+                type="text"
+                placeholder="User UUID"
+                value={deleteUserId}
+                onChange={(e) => setDeleteUserId(e.target.value)}
+                required
+              />
+              <button type="submit">Delete User</button>
+            </form>
+            {userActionStatus.text ? (
+              <p className={userActionStatus.type === "error" ? "error" : "success"}>{userActionStatus.text}</p>
+            ) : null}
+          </section>
+        </section>
+
+        <section className="panel list-panel">
+          <div className="list-header">
+            <h2>All Games</h2>
+            <button onClick={loadGames}>Refresh Games</button>
+          </div>
+          {loadingGames ? <p className="muted">Loading games...</p> : null}
+          {!loadingGames && games.length === 0 ? <p className="muted">No games found.</p> : null}
+          <div className="cards">
+            {games.map((game) => (
+              <article key={game.id} className="card">
+                <div className="card-content">
+                  <h3>{game.name}</h3>
+                  <p>{game.description}</p>
+                  <div className="badge">${game.price} | {game.gameType.replace("GAME_", "")}</div>
+                  <p className="muted small">ID: {game.id}</p>
+                </div>
+                <button
+                  className="buy-button"
+                  onClick={() => handleDeleteGame(game.id, game.name)}
+                  disabled={deletingGameId === game.id}
+                >
+                  {deletingGameId === game.id ? "Deleting..." : "Delete Game"}
                 </button>
               </article>
             ))}

@@ -216,12 +216,23 @@ button:disabled {
   color: #2e2202;
 }
 
+.btn-admin {
+  background: linear-gradient(120deg, #46d9b6, #9effe7);
+  color: #063127;
+}
+
 .user-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.9rem;
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .user-nav h1 {
@@ -341,6 +352,11 @@ a {
 
   .user-nav {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .user-actions {
+    width: 100%;
     flex-direction: column;
   }
 
