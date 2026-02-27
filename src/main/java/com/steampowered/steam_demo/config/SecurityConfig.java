@@ -31,6 +31,7 @@ public class SecurityConfig {
                                 "/register"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/games/create-game").hasAnyRole("PUBLISHER", "PRODUCER", "ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/users", "/api/users/login").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()

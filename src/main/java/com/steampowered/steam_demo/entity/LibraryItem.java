@@ -5,12 +5,13 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
 @Data
 @Table(name = "library_items",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "game_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uk_library_items_user_game", columnNames = {"user_id", "game_id"}))
 public class LibraryItem {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -30,8 +31,10 @@ public class LibraryItem {
 
     @PrePersist
     void prePersist() {
-        if (addedAt == null) {
-            addedAt = LocalDateTime.now();
-        }
+        addedAt = Objects.requireNonNullElse(addedAt, LocalDateTime.now());
+    }
+
+    public BigDecimal refundAmount() {
+        return Objects.requireNonNullElse(purchasePrice, BigDecimal.ZERO);
     }
 }

@@ -4,6 +4,7 @@ import com.steampowered.steam_demo.dto.request.LibraryAddRequest;
 import com.steampowered.steam_demo.dto.response.LibraryResponse;
 import com.steampowered.steam_demo.security.UserPrincipal;
 import com.steampowered.steam_demo.service.LibraryService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +27,7 @@ public class LibraryController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public LibraryResponse addToMyLibrary(@RequestBody LibraryAddRequest request, @AuthenticationPrincipal UserPrincipal principal) {
+    public LibraryResponse addToMyLibrary(@Valid @RequestBody LibraryAddRequest request, @AuthenticationPrincipal UserPrincipal principal) {
         return libraryService.addGameToLibrary(principal.id(), request);
     }
 

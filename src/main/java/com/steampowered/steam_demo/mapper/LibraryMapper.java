@@ -5,11 +5,11 @@ import com.steampowered.steam_demo.entity.Game;
 import com.steampowered.steam_demo.dto.response.LibraryResponse;
 import com.steampowered.steam_demo.entity.LibraryItem;
 import com.steampowered.steam_demo.entity.User;
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
-
-import java.math.BigDecimal;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 @Mapper(componentModel = "spring")
 public interface LibraryMapper {
@@ -20,8 +20,13 @@ public interface LibraryMapper {
     @Mapping(target = "purchasePrice", source = "game.price")
     LibraryItem toEntity(LibraryAddRequest request, User user, Game game);
 
-    @Mapping(target = "balance", source = "balance")
-    void updateUserBalance(@MappingTarget User user, BigDecimal balance);
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "game", ignore = true)
+    @Mapping(target = "addedAt", ignore = true)
+    @Mapping(target = "purchasePrice", ignore = true)
+    void updateEntity(LibraryAddRequest request, @MappingTarget LibraryItem libraryItem);
 
     @Mapping(target = "libraryItemId", source = "id")
     @Mapping(target = "userId", source = "user.id")

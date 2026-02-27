@@ -1,11 +1,13 @@
 package com.steampowered.steam_demo.service;
 
-import com.steampowered.steam_demo.dto.request.RegisterRequest;
+import com.steampowered.steam_demo.dto.request.DisplayNameUpdateRequest;
 import com.steampowered.steam_demo.dto.request.LoginRequest;
+import com.steampowered.steam_demo.dto.request.RegisterRequest;
 import com.steampowered.steam_demo.dto.response.LoginResponse;
 import com.steampowered.steam_demo.dto.response.UserResponse;
 import com.steampowered.steam_demo.entity.User;
-import com.steampowered.steam_demo.entity.UserType;
+import com.steampowered.steam_demo.exception.domain.ApiDomainException;
+import com.steampowered.steam_demo.mapper.AuthMapper;
 import com.steampowered.steam_demo.mapper.UserMapper;
 import com.steampowered.steam_demo.repository.UserRepository;
 import com.steampowered.steam_demo.security.JwtService;
@@ -14,7 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -24,71 +25,55 @@ import java.util.UUID;
 public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final AuthMapper authMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
     @Transactional
     public User createUser(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
-        }
-
         User user = userMapper.toEntity(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setUserType(UserType.ROLE_USER);
-        user.setBalance(BigDecimal.ZERO);
-
         return userRepository.save(user);
     }
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
+                .orElseThrow(() -> new ApiDomainException(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+            throw new ApiDomainException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         }
 
-        LoginResponse response = new LoginResponse();
-        response.setToken(jwtService.generateToken(user));
-        response.setExpiresIn(jwtService.getExpirationMs());
-        response.setUser(userMapper.toResponse(user));
-        return response;
+        return authMapper.toLoginResponse(
+                jwtService.generateToken(user),
+                jwtService.getExpirationMs(),
+                userMapper.toResponse(user)
+        );
     }
 
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"));
+                .orElseThrow(() -> new ApiDomainException(HttpStatus.UNAUTHORIZED, "Invalid token"));
         return userMapper.toResponse(user);
     }
 
     @Transactional
     public void addBalance(UUID userId, BigDecimal amount){
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        user.setBalance(user.getBalance().add(amount));
+        User user = findUserOrThrow(userId);
+        user.addBalance(amount);
     }
 
     @Transactional
-    public void updateDisplayName(UUID userId, String newDisplayName) {
-        if (newDisplayName == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Display name cannot be empty");
-        }
+    public void updateDisplayName(UUID userId, DisplayNameUpdateRequest request) {
+        User user = findUserOrThrow(userId);
+        userMapper.updateDisplayName(request, user);
+        user.changeDisplayName(user.getDisplayName());
+    }
 
-        String normalizedDisplayName = newDisplayName.trim();
-        if (normalizedDisplayName.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Display name cannot be empty");
-        }
-
-        if (normalizedDisplayName.length() > 50) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Display name too long");
-        }
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-
-        user.setDisplayName(normalizedDisplayName);
+    private User findUserOrThrow(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ApiDomainException(HttpStatus.NOT_FOUND, "User not found"));
     }
 }

@@ -3,6 +3,7 @@ package com.steampowered.steam_demo.controller;
 import com.steampowered.steam_demo.dto.request.GameCreateRequest;
 import com.steampowered.steam_demo.entity.Game;
 import com.steampowered.steam_demo.service.GameService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,7 @@ public class GameController {
 
     @PostMapping("/create-game")
     @ResponseStatus(HttpStatus.CREATED)
-    public Game createGame(@RequestBody GameCreateRequest request) {
+    public Game createGame(@Valid @RequestBody GameCreateRequest request) {
         return gameService.createGame(request);
     }
 
