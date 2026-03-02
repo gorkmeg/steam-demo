@@ -776,6 +776,7 @@ function AdminPanel({ token, currentUser, logout }) {
     { key: "username", label: "Username" },
     { key: "displayName", label: "Display Name" },
     { key: "userType", label: "Role", render: (value) => (value ? value.replace("ROLE_", "") : "-") },
+    { key: "status", label: "Status" },
     { key: "balance", label: "Balance", render: (value) => `$${Number(value ?? 0).toFixed(2)}` },
     { key: "id", label: "UUID", render: (value) => <span className="small muted">{value}</span> }
   ];
