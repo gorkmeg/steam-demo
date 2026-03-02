@@ -39,10 +39,10 @@ public class AdminController {
         return PagedResponse.from(adminService.listGames(query, pageable));
     }
 
-    @DeleteMapping("/users/{id}")
+    @PutMapping("/users/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteUser(@PathVariable UUID id) {
-        adminService.deleteUser(id);
+    public void deactivateUser(@PathVariable UUID id) {
+        adminService.deactivateUser(id);
     }
 
     @DeleteMapping("/games/{id}")
@@ -51,17 +51,6 @@ public class AdminController {
         adminService.deleteGame(id);
     }
 
-    @DeleteMapping("/delete-user")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteUserLegacy(@RequestParam("id") UUID id) {
-        adminService.deleteUser(id);
-    }
-
-    @DeleteMapping("/delete-game")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteGameLegacy(@RequestParam("id") UUID id) {
-        adminService.deleteGame(id);
-    }
 
     @PutMapping("/update-user")
     public void updateUser(@Valid @RequestBody AdminUserUpdateRequest request) {

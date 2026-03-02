@@ -2,6 +2,7 @@ package com.steampowered.steam_demo.service;
 
 import com.steampowered.steam_demo.entity.Game;
 import com.steampowered.steam_demo.entity.User;
+import com.steampowered.steam_demo.entity.UserStatus;
 import com.steampowered.steam_demo.exception.domain.ApiDomainException;
 import com.steampowered.steam_demo.mapper.AdminPanelMapper;
 import com.steampowered.steam_demo.repository.GameRepository;
@@ -50,10 +51,10 @@ public class AdminService {
     }
 
     @Transactional
-    public void deleteUser(UUID id) {
+    public void deactivateUser(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiDomainException(HttpStatus.NOT_FOUND, "User not found"));
-        userRepository.delete(user);
+        user.setStatus(UserStatus.DEACTIVATED);
     }
 
     @Transactional

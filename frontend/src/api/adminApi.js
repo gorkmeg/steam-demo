@@ -53,10 +53,28 @@ const del = async (url, token) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`
     }
+
   });
 
   if (!response.ok) {
     const message = await parseErrorMessage(response, "Delete failed.");
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+};
+const status = async (url, token) => {
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    }
+
+  });
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response, "Deactivate failed.");
     const error = new Error(message);
     error.status = response.status;
     throw error;
@@ -74,6 +92,6 @@ export const adminApi = {
     return get(`/api/admin/games?${query}`, token);
   },
 
-  deleteUser: ({ token, id }) => del(`/api/admin/users/${encodeURIComponent(id)}`, token),
+  deleteUser: ({ token, id }) => status(`/api/admin/users/${encodeURIComponent(id)}`, token),
   deleteGame: ({ token, id }) => del(`/api/admin/games/${encodeURIComponent(id)}`, token)
 };

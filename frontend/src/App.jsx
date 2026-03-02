@@ -67,7 +67,7 @@ function LoginPage({ setToken, setCurrentUser }) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handle = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");

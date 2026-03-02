@@ -32,6 +32,8 @@ public class User {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private UserType userType = UserType.ROLE_USER;
+    @Enumerated(EnumType.STRING)
+    private UserStatus status;
 
     public void addBalance(BigDecimal amount) {
         balance = currentBalance().add(amount);
