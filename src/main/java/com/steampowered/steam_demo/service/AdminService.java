@@ -3,6 +3,7 @@ package com.steampowered.steam_demo.service;
 import com.steampowered.steam_demo.entity.Game;
 import com.steampowered.steam_demo.entity.User;
 import com.steampowered.steam_demo.exception.domain.ApiDomainException;
+import com.steampowered.steam_demo.mapper.AdminPanelMapper;
 import com.steampowered.steam_demo.repository.GameRepository;
 import com.steampowered.steam_demo.repository.UserRepository;
 import com.steampowered.steam_demo.dto.response.AdminGameRowResponse;
@@ -24,6 +25,7 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
+    private final AdminPanelMapper adminPanelMapper;
 
     @Transactional(readOnly = true)
     public Page<AdminUserRowResponse> listUsers(String query, Pageable pageable) {
@@ -34,14 +36,7 @@ public class AdminService {
                 ? userRepository.findAll(safePageable)
                 : userRepository.searchForAdmin(toLikePattern(normalizedQuery), safePageable);
 
-        return usersPage
-                .map(user -> new AdminUserRowResponse(
-                        user.getId(),
-                        user.getUsername(),
-                        user.getDisplayName(),
-                        user.getUserType(),
-                        user.getBalance()
-                ));
+        return usersPage.map(adminPanelMapper::toAdminUserRowResponse);
     }
 
     @Transactional(readOnly = true)
@@ -53,15 +48,7 @@ public class AdminService {
                 ? gameRepository.findAll(safePageable)
                 : gameRepository.searchForAdmin(toLikePattern(normalizedQuery), safePageable);
 
-        return gamesPage
-                .map(game -> new AdminGameRowResponse(
-                        game.getId(),
-                        game.getName(),
-                        game.getDescription(),
-                        game.getPrice(),
-                        game.getGameType(),
-                        game.getReleaseDate()
-                ));
+        return gamesPage.map(adminPanelMapper::toAdminGameRowResponse);
     }
 
     @Transactional

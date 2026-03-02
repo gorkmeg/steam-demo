@@ -3,7 +3,9 @@ package com.steampowered.steam_demo.exception;
 import com.steampowered.steam_demo.exception.domain.ApiDomainException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -44,7 +46,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiError> handleNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleNotReadable(HttpServletRequest request) {
         return buildError(HttpStatus.BAD_REQUEST, "Malformed request body", request);
     }
 
@@ -52,7 +54,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .findFirst()
-                .map(fieldError -> fieldError.getDefaultMessage())
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
                 .orElse("Validation failed");
 
         return buildError(HttpStatus.BAD_REQUEST, message, request);
@@ -62,7 +64,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
         String message = ex.getConstraintViolations().stream()
                 .findFirst()
-                .map(violation -> violation.getMessage())
+                .map(ConstraintViolation::getMessage)
                 .orElse("Validation failed");
         return buildError(HttpStatus.BAD_REQUEST, message, request);
     }
@@ -74,7 +76,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleGenericException(Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleGenericException(HttpServletRequest request) {
         return buildError(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", request);
     }
 
