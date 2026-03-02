@@ -308,6 +308,93 @@ button:disabled {
   font-size: 0.82rem;
 }
 
+.admin-controls {
+  margin-top: 0.8rem;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 0.7rem;
+}
+
+.table-container {
+  margin-top: 0.9rem;
+  overflow-x: auto;
+  border: 1px solid rgba(156, 183, 220, 0.23);
+  border-radius: 12px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 0.68rem 0.72rem;
+  border-bottom: 1px solid rgba(156, 183, 220, 0.18);
+  vertical-align: top;
+}
+
+.admin-table th {
+  font-size: 0.84rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a5edff;
+  background: rgba(10, 21, 37, 0.8);
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.danger-button {
+  background: linear-gradient(120deg, #d45454, #ff8d8d);
+  color: #2e0707;
+}
+
+.table-footer {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.table-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 16, 0.7);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.modal-card {
+  width: min(520px, 100%);
+  border-radius: 14px;
+  border: 1px solid rgba(156, 183, 220, 0.25);
+  background: linear-gradient(180deg, rgba(13, 27, 47, 0.96), rgba(10, 21, 37, 0.98));
+  padding: 1rem;
+}
+
+.modal-card h3 {
+  margin: 0 0 0.6rem;
+}
+
+.modal-actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
 .error {
   color: var(--danger);
 }
@@ -366,6 +453,14 @@ a {
   }
 
   .btn-sm {
+    width: 100%;
+  }
+
+  .admin-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .table-actions {
     width: 100%;
   }
 }

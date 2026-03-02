@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router, Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { adminApi } from "./api/adminApi";
+import { AdminDataTable } from "./components/admin/AdminDataTable";
+import { ConfirmModal } from "./components/admin/ConfirmModal";
 
 const gameTypeOptions = ["GAME_SIMULATION", "GAME_STRATEGY", "GAME_SPORT"];
 const initialGameForm = { name: "", description: "", price: "", gameType: "" };
@@ -650,18 +653,22 @@ function Dashboard({ token, currentUser, logout }) {
 }
 
 function AdminPanel({ token, currentUser, logout }) {
-  const [games, setGames] = useState([]);
+  const [usersData, setUsersData] = useState({ data: [], page: null });
+  const [gamesData, setGamesData] = useState({ data: [], page: null });
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingGames, setLoadingGames] = useState(true);
-  const [deletingGameId, setDeletingGameId] = useState(null);
-  const [deleteUserId, setDeleteUserId] = useState("");
-  const [updateUserForm, setUpdateUserForm] = useState({ id: "", name: "" });
-  const [userActionStatus, setUserActionStatus] = useState({ type: "", text: "" });
+  const [usersPage, setUsersPage] = useState(0);
+  const [gamesPage, setGamesPage] = useState(0);
+  const [usersSize, setUsersSize] = useState(10);
+  const [gamesSize, setGamesSize] = useState(10);
+  const [usersSort, setUsersSort] = useState("username,asc");
+  const [gamesSort, setGamesSort] = useState("releaseDate,desc");
+  const [usersQuery, setUsersQuery] = useState("");
+  const [gamesQuery, setGamesQuery] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [status, setStatus] = useState({ type: "", text: "" });
   const navigate = useNavigate();
-
-  const authHeaders = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`
-  };
 
   const handleUnauthorized = (status) => {
     if (status === 401 || status === 403) {
@@ -672,126 +679,114 @@ function AdminPanel({ token, currentUser, logout }) {
     return false;
   };
 
-  const loadGames = async () => {
+  const loadUsers = useCallback(async () => {
+    setLoadingUsers(true);
+    try {
+      const response = await adminApi.listUsers({
+        token,
+        page: usersPage,
+        size: usersSize,
+        sort: usersSort,
+        q: usersQuery.trim() || undefined
+      });
+      setUsersData({
+        data: Array.isArray(response?.data) ? response.data : [],
+        page: response?.page || null
+      });
+    } catch (err) {
+      if (handleUnauthorized(err.status)) {
+        return;
+      }
+      setUsersData({ data: [], page: null });
+      setStatus({ type: "error", text: err.message || "Could not load users." });
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [token, usersPage, usersSize, usersSort, usersQuery, navigate]);
+
+  const loadGames = useCallback(async () => {
     setLoadingGames(true);
     try {
-      const res = await fetch("/api/games", { headers: authHeaders });
-      if (handleUnauthorized(res.status)) {
-        return;
-      }
-      if (!res.ok) {
-        setGames([]);
-        return;
-      }
-      const data = await res.json();
-      setGames(Array.isArray(data) ? data : []);
+      const response = await adminApi.listGames({
+        token,
+        page: gamesPage,
+        size: gamesSize,
+        sort: gamesSort,
+        q: gamesQuery.trim() || undefined
+      });
+      setGamesData({
+        data: Array.isArray(response?.data) ? response.data : [],
+        page: response?.page || null
+      });
     } catch (err) {
-      console.error("Load admin games error:", err);
-      setGames([]);
+      if (handleUnauthorized(err.status)) {
+        return;
+      }
+      setGamesData({ data: [], page: null });
+      setStatus({ type: "error", text: err.message || "Could not load games." });
     } finally {
       setLoadingGames(false);
     }
-  };
+  }, [token, gamesPage, gamesSize, gamesSort, gamesQuery, navigate]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   useEffect(() => {
     loadGames();
-  }, [token]);
+  }, [loadGames]);
 
-  const handleDeleteGame = async (gameId, gameName) => {
-    if (!window.confirm(`Delete "${gameName}" permanently?`)) {
+  const handleDelete = async () => {
+    if (!deleteTarget) {
       return;
     }
 
-    setDeletingGameId(gameId);
+    setStatus({ type: "", text: "" });
+    setDeletingId(deleteTarget.id);
     try {
-      const res = await fetch(`/api/admin/delete-game?id=${encodeURIComponent(gameId)}`, {
-        method: "DELETE",
-        headers: authHeaders
-      });
-
-      if (handleUnauthorized(res.status)) {
-        return;
+      if (deleteTarget.type === "user") {
+        await adminApi.deleteUser({ token, id: deleteTarget.id });
+        if (usersData.data.length === 1 && usersPage > 0) {
+          setUsersPage((currentPage) => Math.max(currentPage - 1, 0));
+        } else {
+          await loadUsers();
+        }
+      } else {
+        await adminApi.deleteGame({ token, id: deleteTarget.id });
+        if (gamesData.data.length === 1 && gamesPage > 0) {
+          setGamesPage((currentPage) => Math.max(currentPage - 1, 0));
+        } else {
+          await loadGames();
+        }
       }
-      if (!res.ok) {
-        const msg = await res.text();
-        alert(`Delete game failed: ${msg || "Unknown error"}`);
-        return;
-      }
-
-      await loadGames();
+      setStatus({ type: "success", text: `${deleteTarget.type === "user" ? "User" : "Game"} deleted.` });
+      setDeleteTarget(null);
     } catch (err) {
-      alert(`Delete game error: ${err.message}`);
+      if (handleUnauthorized(err.status)) {
+        return;
+      }
+      setStatus({ type: "error", text: err.message || "Delete request failed." });
     } finally {
-      setDeletingGameId(null);
+      setDeletingId(null);
     }
   };
 
-  const handleDeleteUser = async (e) => {
-    e.preventDefault();
-    setUserActionStatus({ type: "", text: "" });
+  const userColumns = [
+    { key: "username", label: "Username" },
+    { key: "displayName", label: "Display Name" },
+    { key: "userType", label: "Role", render: (value) => (value ? value.replace("ROLE_", "") : "-") },
+    { key: "balance", label: "Balance", render: (value) => `$${Number(value ?? 0).toFixed(2)}` },
+    { key: "id", label: "UUID", render: (value) => <span className="small muted">{value}</span> }
+  ];
 
-    if (!deleteUserId.trim()) {
-      setUserActionStatus({ type: "error", text: "User id is required." });
-      return;
-    }
-
-    if (!window.confirm(`Delete user ${deleteUserId}? This action is permanent.`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/admin/delete-user?id=${encodeURIComponent(deleteUserId)}`, {
-        method: "DELETE",
-        headers: authHeaders
-      });
-
-      if (handleUnauthorized(res.status)) {
-        return;
-      }
-      if (!res.ok) {
-        const msg = await res.text();
-        setUserActionStatus({ type: "error", text: msg || "Delete user failed." });
-        return;
-      }
-
-      setDeleteUserId("");
-      setUserActionStatus({ type: "success", text: "User deleted successfully." });
-    } catch (err) {
-      setUserActionStatus({ type: "error", text: "Delete user request failed." });
-    }
-  };
-
-  const handleUpdateUser = async (e) => {
-    e.preventDefault();
-    setUserActionStatus({ type: "", text: "" });
-
-    if (!updateUserForm.id.trim() || !updateUserForm.name.trim()) {
-      setUserActionStatus({ type: "error", text: "User id and display name are required." });
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/admin/update-user", {
-        method: "PUT",
-        headers: authHeaders,
-        body: JSON.stringify(updateUserForm)
-      });
-
-      if (handleUnauthorized(res.status)) {
-        return;
-      }
-      if (!res.ok) {
-        const msg = await res.text();
-        setUserActionStatus({ type: "error", text: msg || "Update user failed." });
-        return;
-      }
-
-      setUpdateUserForm({ id: "", name: "" });
-      setUserActionStatus({ type: "success", text: "User updated successfully." });
-    } catch (err) {
-      setUserActionStatus({ type: "error", text: "Update user request failed." });
-    }
-  };
+  const gameColumns = [
+    { key: "name", label: "Name" },
+    { key: "gameType", label: "Type", render: (value) => (value ? value.replace("GAME_", "") : "-") },
+    { key: "price", label: "Price", render: (value) => `$${Number(value ?? 0).toFixed(2)}` },
+    { key: "releaseDate", label: "Release Date", render: (value) => (value ? new Date(value).toLocaleString() : "-") },
+    { key: "id", label: "UUID", render: (value) => <span className="small muted">{value}</span> }
+  ];
 
   return (
     <div className="layout-wrapper">
@@ -808,74 +803,126 @@ function AdminPanel({ token, currentUser, logout }) {
       </header>
 
       <main className="layout">
-        <section className="side-column">
-          <section className="panel balance-panel">
-            <h2>Update User Display Name</h2>
-            <form onSubmit={handleUpdateUser} className="form-grid">
-              <input
-                type="text"
-                placeholder="User UUID"
-                value={updateUserForm.id}
-                onChange={(e) => setUpdateUserForm({ ...updateUserForm, id: e.target.value })}
-                required
-              />
-              <input
-                type="text"
-                placeholder="New display name"
-                value={updateUserForm.name}
-                onChange={(e) => setUpdateUserForm({ ...updateUserForm, name: e.target.value })}
-                required
-              />
-              <button type="submit">Update User</button>
-            </form>
-          </section>
-
-          <section className="panel balance-panel">
-            <h2>Delete User</h2>
-            <form onSubmit={handleDeleteUser} className="form-grid">
-              <input
-                type="text"
-                placeholder="User UUID"
-                value={deleteUserId}
-                onChange={(e) => setDeleteUserId(e.target.value)}
-                required
-              />
-              <button type="submit">Delete User</button>
-            </form>
-            {userActionStatus.text ? (
-              <p className={userActionStatus.type === "error" ? "error" : "success"}>{userActionStatus.text}</p>
-            ) : null}
-          </section>
-        </section>
-
-        <section className="panel list-panel">
-          <div className="list-header">
-            <h2>All Games</h2>
-            <button onClick={loadGames}>Refresh Games</button>
-          </div>
-          {loadingGames ? <p className="muted">Loading games...</p> : null}
-          {!loadingGames && games.length === 0 ? <p className="muted">No games found.</p> : null}
-          <div className="cards">
-            {games.map((game) => (
-              <article key={game.id} className="card">
-                <div className="card-content">
-                  <h3>{game.name}</h3>
-                  <p>{game.description}</p>
-                  <div className="badge">${game.price} | {game.gameType.replace("GAME_", "")}</div>
-                  <p className="muted small">ID: {game.id}</p>
-                </div>
-                <button
-                  className="buy-button"
-                  onClick={() => handleDeleteGame(game.id, game.name)}
-                  disabled={deletingGameId === game.id}
-                >
-                  {deletingGameId === game.id ? "Deleting..." : "Delete Game"}
-                </button>
-              </article>
-            ))}
+        <section className="panel balance-panel full-width">
+          <h2>User List Controls</h2>
+          <div className="admin-controls">
+            <input
+              type="text"
+              placeholder="Search users by username or display name"
+              value={usersQuery}
+              onChange={(event) => {
+                setUsersPage(0);
+                setUsersQuery(event.target.value);
+              }}
+            />
+            <select
+              value={usersSort}
+              onChange={(event) => {
+                setUsersPage(0);
+                setUsersSort(event.target.value);
+              }}
+            >
+              <option value="username,asc">Username (A-Z)</option>
+              <option value="username,desc">Username (Z-A)</option>
+              <option value="displayName,asc">Display Name (A-Z)</option>
+              <option value="displayName,desc">Display Name (Z-A)</option>
+              <option value="userType,asc">Role (A-Z)</option>
+              <option value="userType,desc">Role (Z-A)</option>
+            </select>
+            <select
+              value={usersSize}
+              onChange={(event) => {
+                setUsersPage(0);
+                setUsersSize(Number(event.target.value));
+              }}
+            >
+              <option value={10}>10 / page</option>
+              <option value={20}>20 / page</option>
+              <option value={50}>50 / page</option>
+            </select>
+            <button type="button" onClick={loadUsers}>Refresh Users</button>
           </div>
         </section>
+
+        <section className="panel balance-panel full-width">
+          <h2>Game List Controls</h2>
+          <div className="admin-controls">
+            <input
+              type="text"
+              placeholder="Search games by name or description"
+              value={gamesQuery}
+              onChange={(event) => {
+                setGamesPage(0);
+                setGamesQuery(event.target.value);
+              }}
+            />
+            <select
+              value={gamesSort}
+              onChange={(event) => {
+                setGamesPage(0);
+                setGamesSort(event.target.value);
+              }}
+            >
+              <option value="releaseDate,desc">Release Date (newest)</option>
+              <option value="releaseDate,asc">Release Date (oldest)</option>
+              <option value="name,asc">Name (A-Z)</option>
+              <option value="name,desc">Name (Z-A)</option>
+              <option value="price,asc">Price (low-high)</option>
+              <option value="price,desc">Price (high-low)</option>
+            </select>
+            <select
+              value={gamesSize}
+              onChange={(event) => {
+                setGamesPage(0);
+                setGamesSize(Number(event.target.value));
+              }}
+            >
+              <option value={10}>10 / page</option>
+              <option value={20}>20 / page</option>
+              <option value={50}>50 / page</option>
+            </select>
+            <button type="button" onClick={loadGames}>Refresh Games</button>
+          </div>
+        </section>
+
+        {status.text ? <p className={status.type === "error" ? "error" : "success"}>{status.text}</p> : null}
+
+        <AdminDataTable
+          title="Users"
+          loading={loadingUsers}
+          rows={usersData.data}
+          columns={userColumns}
+          keyField="id"
+          emptyMessage="No users found."
+          onDelete={(row) => setDeleteTarget({ type: "user", id: row.id, label: row.username })}
+          deletingId={deletingId}
+          page={usersData.page}
+          onPageChange={setUsersPage}
+        />
+
+        <AdminDataTable
+          title="Games"
+          loading={loadingGames}
+          rows={gamesData.data}
+          columns={gameColumns}
+          keyField="id"
+          emptyMessage="No games found."
+          onDelete={(row) => setDeleteTarget({ type: "game", id: row.id, label: row.name })}
+          deletingId={deletingId}
+          page={gamesData.page}
+          onPageChange={setGamesPage}
+        />
       </main>
+
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title={`Delete ${deleteTarget?.type === "user" ? "User" : "Game"}?`}
+        message={`You are about to delete "${deleteTarget?.label || "-"}". This action cannot be undone.`}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        confirmText="Delete Permanently"
+        loading={Boolean(deleteTarget && deletingId === deleteTarget.id)}
+      />
     </div>
   );
 }
