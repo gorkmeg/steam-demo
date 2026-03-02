@@ -1,5 +1,6 @@
 package com.steampowered.steam_demo.dto.response;
 
+import com.steampowered.steam_demo.entity.UserStatus;
 import com.steampowered.steam_demo.entity.UserType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,4 +16,5 @@ public class AdminUserRowResponse {
     private final String displayName;
     private final UserType userType;
     private final BigDecimal balance;
+    private final UserStatus status;
 }
