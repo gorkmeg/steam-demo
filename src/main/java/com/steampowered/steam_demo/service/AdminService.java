@@ -44,9 +44,7 @@ public class AdminService {
         Pageable safePageable = toSafePageable(pageable);
         String normalizedQuery = normalizeQuery(query);
 
-        Page<Game> gamesPage = normalizedQuery == null
-                ? gameRepository.findAll(safePageable)
-                : gameRepository.searchForAdmin(toLikePattern(normalizedQuery), safePageable);
+        Page<Game> gamesPage = normalizedQuery == null ? gameRepository.findAll(safePageable) : gameRepository.searchForAdmin(toLikePattern(normalizedQuery), safePageable);
 
         return gamesPage.map(adminPanelMapper::toAdminGameRowResponse);
     }

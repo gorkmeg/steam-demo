@@ -33,13 +33,9 @@ public class JwtService {
         Instant now = Instant.now();
         Instant expiration = now.plusMillis(expirationMs);
 
-        return Jwts.builder()
-                .subject(user.getUsername())
-                .claims(Map.of("role", user.getUserType().name(), "uid", user.getId().toString()))
-                .issuedAt(Date.from(now))
-                .expiration(Date.from(expiration))
-                .signWith(signingKey)
-                .compact();
+        return Jwts.builder().subject(user.getUsername())
+                .claims(Map.of("role", user.getUserType().name(), "uid", user.getId().toString())).issuedAt(Date.from(now))
+                .expiration(Date.from(expiration)).signWith(signingKey).compact();
     }
 
     public String extractUsername(String token) {

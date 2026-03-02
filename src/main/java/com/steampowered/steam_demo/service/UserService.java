@@ -45,11 +45,7 @@ public class UserService {
             throw new ApiDomainException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         }
 
-        return authMapper.toLoginResponse(
-                jwtService.generateToken(user),
-                jwtService.getExpirationMs(),
-                userMapper.toResponse(user)
-        );
+        return authMapper.toLoginResponse(jwtService.generateToken(user), jwtService.getExpirationMs(), userMapper.toResponse(user));
     }
 
     @Transactional(readOnly = true)

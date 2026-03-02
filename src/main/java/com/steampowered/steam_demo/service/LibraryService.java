@@ -39,10 +39,7 @@ public class LibraryService {
 
     @Transactional(readOnly = true)
     public List<LibraryResponse> getUserLibrary(UUID userId) {
-        return libraryRepository.findAllByUserId(userId)
-                .stream()
-                .map(libraryMapper::toResponse)
-                .toList();
+        return libraryRepository.findAllByUserId(userId).stream().map(libraryMapper::toResponse).toList();
     }
 
     @Transactional
