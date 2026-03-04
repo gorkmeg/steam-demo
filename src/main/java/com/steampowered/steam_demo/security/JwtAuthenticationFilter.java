@@ -1,5 +1,7 @@
 package com.steampowered.steam_demo.security;
 
+import com.steampowered.steam_demo.entity.UserStatus;
+import com.steampowered.steam_demo.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
@@ -38,23 +41,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UUID userId = jwtService.extractUserId(token);
             String role = jwtService.extractRole(token);
 
-            if (username != null && userId != null && role != null && jwtService.isTokenValid(token)
-                    && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username == null || userId == null || role == null) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            if (!jwtService.isTokenValid(token)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            String status = String.valueOf(userRepository.findStatusById(userId).orElse(UserStatus.valueOf("DEACTIVATED")));
+            if ("DEACTIVATED".equals(status)) {
+                SecurityContextHolder.clearContext();
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Account is deactivated");
+                return;
+            }
+
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
                 String normalizedRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
                 List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(normalizedRole));
                 UserPrincipal principal = new UserPrincipal(userId, username, authorities);
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        principal,
-                        null,
-                        authorities
-                );
+
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(principal, null, authorities);
+
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
-        } catch (Exception ignored) {
+
+        } catch (Exception e) {
             SecurityContextHolder.clearContext();
         }
-
         filterChain.doFilter(request, response);
     }
 }

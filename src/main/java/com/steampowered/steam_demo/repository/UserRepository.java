@@ -1,6 +1,7 @@
 package com.steampowered.steam_demo.repository;
 
 import com.steampowered.steam_demo.entity.User;
+import com.steampowered.steam_demo.entity.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,4 +21,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                 or lower(u.displayName) like :pattern
             """)
     Page<User> searchForAdmin(@Param("pattern") String pattern, Pageable pageable);
+
+    @Query("select u.status from User u where u.id = :id")
+    Optional<UserStatus> findStatusById(@Param("id") UUID id);
 }
