@@ -80,7 +80,24 @@ function LoginPage({ setToken, setCurrentUser }) {
       });
 
       if (!response.ok) {
-        throw new Error("Login failed.");
+        let message = "Login failed.";
+        try {
+          const contentType = response.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            const data = await response.json();
+            if (data?.message) {
+              message = data.message;
+            }
+          } else {
+            const text = await response.text();
+            if (text) {
+              message = text;
+            }
+          }
+        } catch (_) {
+          // Fallback to default message.
+        }
+        throw new Error(message);
       }
 
       const data = await response.json();
@@ -746,7 +763,7 @@ function AdminPanel({ token, currentUser, logout }) {
     setDeletingId(deleteTarget.id);
     try {
       if (deleteTarget.type === "user") {
-        await adminApi.deleteUser({ token, id: deleteTarget.id });
+        await adminApi.deactivateUser({ token, id: deleteTarget.id });
         if (usersData.data.length === 1 && usersPage > 0) {
           setUsersPage((currentPage) => Math.max(currentPage - 1, 0));
         } else {
@@ -760,13 +777,13 @@ function AdminPanel({ token, currentUser, logout }) {
           await loadGames();
         }
       }
-      setStatus({ type: "success", text: `${deleteTarget.type === "user" ? "User" : "Game"} deleted.` });
+      setStatus({ type: "success", text: deleteTarget.type === "user" ? "User deactivated." : "Game deleted." });
       setDeleteTarget(null);
     } catch (err) {
       if (handleUnauthorized(err.status)) {
         return;
       }
-      setStatus({ type: "error", text: err.message || "Delete request failed." });
+      setStatus({ type: "error", text: err.message || `${deleteTarget?.type === "user" ? "Deactivate" : "Delete"} request failed.` });
     } finally {
       setDeletingId(null);
     }
@@ -917,11 +934,15 @@ function AdminPanel({ token, currentUser, logout }) {
 
       <ConfirmModal
         open={Boolean(deleteTarget)}
-        title={`Delete ${deleteTarget?.type === "user" ? "User" : "Game"}?`}
-        message={`You are about to delete "${deleteTarget?.label || "-"}". This action cannot be undone.`}
+        title={`${deleteTarget?.type === "user" ? "Deactivate User" : "Delete Game"}?`}
+        message={
+          deleteTarget?.type === "user"
+            ? `You are about to deactivate "${deleteTarget?.label || "-"}".`
+            : `You are about to delete "${deleteTarget?.label || "-"}". This action cannot be undone.`
+        }
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
-        confirmText="Delete Permanently"
+        confirmText={deleteTarget?.type === "user" ? "Deactivate User" : "Delete Permanently"}
         loading={Boolean(deleteTarget && deletingId === deleteTarget.id)}
       />
     </div>

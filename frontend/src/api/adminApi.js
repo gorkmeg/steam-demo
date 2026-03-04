@@ -63,7 +63,7 @@ const del = async (url, token) => {
     throw error;
   }
 };
-const status = async (url, token) => {
+const put = async (url, token) => {
   const response = await fetch(url, {
     method: "PUT",
     headers: {
@@ -92,6 +92,6 @@ export const adminApi = {
     return get(`/api/admin/games?${query}`, token);
   },
 
-  deleteUser: ({ token, id }) => status(`/api/admin/users/${encodeURIComponent(id)}`, token),
+  deactivateUser: ({ token, id }) => put(`/api/admin/users/${encodeURIComponent(id)}`, token),
   deleteGame: ({ token, id }) => del(`/api/admin/games/${encodeURIComponent(id)}`, token)
 };

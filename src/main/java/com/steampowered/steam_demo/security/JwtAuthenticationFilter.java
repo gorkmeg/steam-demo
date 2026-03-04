@@ -51,8 +51,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            String status = String.valueOf(userRepository.findStatusById(userId).orElse(UserStatus.valueOf("DEACTIVATED")));
-            if ("DEACTIVATED".equals(status)) {
+            UserStatus status = userRepository.findStatusById(userId).orElse(UserStatus.ACTIVE);
+            if (status == UserStatus.DEACTIVATED) {
                 SecurityContextHolder.clearContext();
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Account is deactivated");
                 return;

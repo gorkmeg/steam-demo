@@ -6,6 +6,7 @@ import com.steampowered.steam_demo.dto.request.RegisterRequest;
 import com.steampowered.steam_demo.dto.response.LoginResponse;
 import com.steampowered.steam_demo.dto.response.UserResponse;
 import com.steampowered.steam_demo.entity.User;
+import com.steampowered.steam_demo.entity.UserStatus;
 import com.steampowered.steam_demo.exception.domain.ApiDomainException;
 import com.steampowered.steam_demo.mapper.AuthMapper;
 import com.steampowered.steam_demo.mapper.UserMapper;
@@ -33,6 +34,7 @@ public class UserService {
     public User createUser(RegisterRequest request) {
         User user = userMapper.toEntity(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setStatus(UserStatus.ACTIVE);
         return userRepository.save(user);
     }
 
@@ -43,6 +45,10 @@ public class UserService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ApiDomainException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+        }
+
+        if (user.getStatus() == UserStatus.DEACTIVATED) {
+            throw new ApiDomainException(HttpStatus.FORBIDDEN, "Account is deactivated");
         }
 
         return authMapper.toLoginResponse(jwtService.generateToken(user), jwtService.getExpirationMs(), userMapper.toResponse(user));
