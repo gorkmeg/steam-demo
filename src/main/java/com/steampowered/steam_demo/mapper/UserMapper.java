@@ -15,6 +15,7 @@ public interface UserMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userType", ignore = true)
     @Mapping(target = "balance", ignore = true)
+    @Mapping(target ="status", ignore = true)
     User toEntity(RegisterRequest request);
 
     @BeanMapping(
