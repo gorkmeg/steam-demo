@@ -1,4 +1,13 @@
-export function ConfirmModal({ open, title, message, onCancel, onConfirm, confirmText = "Delete", loading = false }) {
+export function ConfirmModal({
+  open,
+  title,
+  message,
+  onCancel,
+  onConfirm,
+  confirmText = "Delete",
+  loadingText = "Processing...",
+  loading = false
+}) {
   if (!open) {
     return null;
   }
@@ -13,7 +22,7 @@ export function ConfirmModal({ open, title, message, onCancel, onConfirm, confir
             Cancel
           </button>
           <button type="button" className="danger-button" onClick={onConfirm} disabled={loading}>
-            {loading ? "Deleting..." : confirmText}
+            {loading ? loadingText : confirmText}
           </button>
         </div>
       </div>

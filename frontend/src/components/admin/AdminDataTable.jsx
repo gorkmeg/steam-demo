@@ -36,7 +36,9 @@ export function AdminDataTable({
   columns,
   keyField = "id",
   emptyMessage,
-  onDelete,
+  onAction,
+  actionLabel = "Delete",
+  actionLoadingLabel = "Processing...",
   deletingId,
   page,
   onPageChange
@@ -76,10 +78,10 @@ export function AdminDataTable({
                     <button
                       type="button"
                       className="danger-button"
-                      onClick={() => onDelete(row)}
+                      onClick={() => onAction(row)}
                       disabled={deletingId === row[keyField]}
                     >
-                      {deletingId === row[keyField] ? "Deleting..." : "Delete"}
+                      {deletingId === row[keyField] ? actionLoadingLabel : actionLabel}
                     </button>
                   </td>
                 </tr>

@@ -754,7 +754,7 @@ function AdminPanel({ token, currentUser, logout }) {
     loadGames();
   }, [loadGames]);
 
-  const handleDelete = async () => {
+  const handleAction = async () => {
     if (!deleteTarget) {
       return;
     }
@@ -912,7 +912,9 @@ function AdminPanel({ token, currentUser, logout }) {
           columns={userColumns}
           keyField="id"
           emptyMessage="No users found."
-          onDelete={(row) => setDeleteTarget({ type: "user", id: row.id, label: row.username })}
+          onAction={(row) => setDeleteTarget({ type: "user", id: row.id, label: row.username })}
+          actionLabel="Deactivate"
+          actionLoadingLabel="Deactivating..."
           deletingId={deletingId}
           page={usersData.page}
           onPageChange={setUsersPage}
@@ -925,7 +927,9 @@ function AdminPanel({ token, currentUser, logout }) {
           columns={gameColumns}
           keyField="id"
           emptyMessage="No games found."
-          onDelete={(row) => setDeleteTarget({ type: "game", id: row.id, label: row.name })}
+          onAction={(row) => setDeleteTarget({ type: "game", id: row.id, label: row.name })}
+          actionLabel="Delete"
+          actionLoadingLabel="Deleting..."
           deletingId={deletingId}
           page={gamesData.page}
           onPageChange={setGamesPage}
@@ -941,8 +945,9 @@ function AdminPanel({ token, currentUser, logout }) {
             : `You are about to delete "${deleteTarget?.label || "-"}". This action cannot be undone.`
         }
         onCancel={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
+        onConfirm={handleAction}
         confirmText={deleteTarget?.type === "user" ? "Deactivate User" : "Delete Permanently"}
+        loadingText={deleteTarget?.type === "user" ? "Deactivating..." : "Deleting..."}
         loading={Boolean(deleteTarget && deletingId === deleteTarget.id)}
       />
     </div>
