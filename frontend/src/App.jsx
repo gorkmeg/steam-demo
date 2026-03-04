@@ -104,7 +104,7 @@ function LoginPage({ setToken, setCurrentUser }) {
         <p className="sub">Access your store, add funds, and manage your owned games.</p>
       </header>
 
-      <form onSubmit={handleLogin} className="panel form-grid auth-panel">
+      <form onSubmit={handle} className="panel form-grid auth-panel">
         <label>
           Username
           <input
