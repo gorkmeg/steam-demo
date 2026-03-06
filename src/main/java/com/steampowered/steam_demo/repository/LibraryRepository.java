@@ -11,4 +11,5 @@ public interface LibraryRepository extends JpaRepository<LibraryItem, UUID> {
     List<LibraryItem> findAllByUserId(UUID userId);
     boolean existsByUserIdAndGameId(UUID userId, UUID gameId);
     Optional<LibraryItem> findByIdAndUserId(UUID id, UUID userId);
+    List<LibraryItem> findAllByUserIdAndGameBaseGameId(UUID userId, UUID baseGameId);
 }

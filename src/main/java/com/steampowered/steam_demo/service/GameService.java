@@ -22,6 +22,17 @@ public class GameService {
     @Transactional
     public Game createGame(GameCreateRequest request) {
         Game game = gameMapper.toEntity(request);
+
+        if(Boolean.TRUE.equals(request.getIsDlc())) {
+            Game baseGame = gameRepository.findById(request.getBaseGameId())
+                    .orElseThrow(() -> new ApiDomainException(HttpStatus.BAD_REQUEST, "Base game id not found"));
+        if(baseGame.isDlc()){
+            throw new ApiDomainException(HttpStatus.BAD_REQUEST, "Base game is dlc");
+        }
+        game.setBaseGame(baseGame);
+        } else {
+            game.setBaseGame(null);
+        }
         return gameRepository.save(game);
     }
 

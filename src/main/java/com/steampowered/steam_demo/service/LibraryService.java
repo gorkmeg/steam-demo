@@ -14,6 +14,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,6 +34,19 @@ public class LibraryService {
                 .orElseThrow(() -> new ApiDomainException(HttpStatus.NOT_FOUND, "User not found"));
         Game game = gameRepository.findById(request.getGameId())
                 .orElseThrow(() -> new ApiDomainException(HttpStatus.NOT_FOUND, "Game not found"));
+
+        if (game.isDlc()) {
+            Game baseGame = game.getBaseGame();
+            if (baseGame == null) {
+                throw new ApiDomainException(HttpStatus.BAD_REQUEST, "DLC must have a base game");
+            }
+
+            boolean ownsBaseGame = libraryRepository.existsByUserIdAndGameId(userId, baseGame.getId());
+            if (!ownsBaseGame) {
+                throw new ApiDomainException(HttpStatus.BAD_REQUEST, "Base game is required to purchase this DLC");
+            }
+        }
+
         user.purchase(game.getPrice());
 
         LibraryItem libraryItem = libraryMapper.toEntity(request, user, game);
@@ -47,9 +63,20 @@ public class LibraryService {
         LibraryItem libraryItem = libraryRepository.findByIdAndUserId(libraryItemId, userId)
                 .orElseThrow(() -> new ApiDomainException(HttpStatus.NOT_FOUND, "Library item not found"));
 
+        Game game = libraryItem.getGame();
         User user = libraryItem.getUser();
-        user.refund(libraryItem.refundAmount());
 
-        libraryRepository.delete(libraryItem);
+        List<LibraryItem> itemsToRefund = new ArrayList<>();
+        itemsToRefund.add(libraryItem);
+
+        if (!game.isDlc()) {
+            List<LibraryItem> dlcItems = libraryRepository.findAllByUserIdAndGameBaseGameId(userId, game.getId());
+            itemsToRefund.addAll(dlcItems);
+        }
+        BigDecimal totalRefund = itemsToRefund.stream()
+                .map(LibraryItem::refundAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        user.refund(totalRefund);
+        libraryRepository.deleteAll(itemsToRefund);
     }
 }

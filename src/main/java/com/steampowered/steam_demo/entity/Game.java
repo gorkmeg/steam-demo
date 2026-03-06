@@ -20,4 +20,8 @@ public class Game {
     private LocalDateTime releaseDate = LocalDateTime.now();
     @Enumerated(EnumType.STRING)
     private GameType gameType;
+    private boolean isDlc;
+    @ManyToOne
+    @JoinColumn(name = "base_game_id")
+    private Game baseGame;
 }

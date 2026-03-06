@@ -5,7 +5,7 @@ import { AdminDataTable } from "./components/admin/AdminDataTable";
 import { ConfirmModal } from "./components/admin/ConfirmModal";
 
 const gameTypeOptions = ["GAME_SIMULATION", "GAME_STRATEGY", "GAME_SPORT"];
-const initialGameForm = { name: "", description: "", price: "", gameType: "" };
+const initialGameForm = { name: "", description: "", price: "", gameType: "", isDlc: false, baseGameId: "" };
 const initialAuthForm = { username: "", displayName: "", password: "" };
 
 function App() {
@@ -444,7 +444,7 @@ function Dashboard({ token, currentUser, logout }) {
   };
 
   const handleRefund = async (libraryItemId, gameName) => {
-    const confirmed = window.confirm(`Refund "${gameName}" and remove it from your library?`);
+    const confirmed = window.confirm(`Refund "${gameName}" and all the related dlcs remove it from your library?`);
     if (!confirmed) {
       return;
     }
@@ -484,10 +484,19 @@ function Dashboard({ token, currentUser, logout }) {
       return;
     }
 
+    const payload = {
+      name: gameForm.name.trim(),
+      description: gameForm.description.trim(),
+      price: Number(gameForm.price),
+      gameType: gameForm.gameType,
+      isDlc: Boolean(gameForm.isDlc),
+      baseGameId: gameForm.isDlc ? gameForm.baseGameId || null : null,
+    }
+
     const response = await fetch("/api/games/create-game", {
       method: "POST",
       headers: authHeaders,
-      body: JSON.stringify({ ...gameForm, price: Number(gameForm.price) })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
@@ -597,6 +606,36 @@ function Dashboard({ token, currentUser, logout }) {
                   ))}
                 </select>
                 <button type="submit">Create Game</button>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={gameForm.isDlc}
+                    onChange={(e) =>
+                      setGameForm({
+                        ...gameForm,
+                        isDlc: e.target.checked,
+                        baseGameId: e.target.checked ? gameForm.baseGameId : ""
+                      })
+                    }
+                  />
+                  Is DLC
+                </label>
+                {gameForm.isDlc ? (
+                  <select
+                    value={gameForm.baseGameId}
+                    onChange={(e) => setGameForm({ ...gameForm, baseGameId: e.target.value })}
+                    required
+                  >
+                    <option value="" disabled>Select base game</option>
+                    {games
+                      .filter((g) => !g.isDlc)
+                      .map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name}
+                        </option>
+                      ))}
+                  </select>
+                ) : null}
               </form>
             </section>
           ) : null}
