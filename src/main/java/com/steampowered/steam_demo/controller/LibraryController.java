@@ -31,7 +31,7 @@ public class LibraryController {
         return libraryService.addGameToLibrary(principal.id(), request);
     }
 
-    @DeleteMapping("/{libraryItemId}")
+    @DeleteMapping("/refund-game/{libraryItemId}")
     public ResponseEntity<?> refundGame(@PathVariable UUID libraryItemId, @AuthenticationPrincipal UserPrincipal principal) {
         libraryService.refundGame(principal.id(), libraryItemId);
         return ResponseEntity.ok("Game refunded successfully");
