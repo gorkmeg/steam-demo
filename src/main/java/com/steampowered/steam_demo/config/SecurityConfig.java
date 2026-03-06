@@ -14,8 +14,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 public class SecurityConfig {
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -23,14 +24,18 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/",
-                                "/index.html",
-                                "/assets/**",
-                                "/favicon.ico",
-                                "/login",
-                                "/register"
+                                // "/",
+                                // "/index.html",
+                                // "/assets/**",
+                                // "/favicon.ico",
+                                // "/login",
+                                // "/register",
+
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.POST,"/api/games/create-game").hasAnyRole("PUBLISHER", "PRODUCER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/games/create-game").hasAnyRole("PUBLISHER", "PRODUCER", "ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/users", "/api/users/login").permitAll()
                         .requestMatchers("/error").permitAll()
