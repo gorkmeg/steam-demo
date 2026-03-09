@@ -451,7 +451,7 @@ function Dashboard({ token, currentUser, logout }) {
 
     setRefundingId(libraryItemId);
     try {
-      const response = await fetch(`/api/library/${libraryItemId}`, {
+      const response = await fetch(`/api/library/refund-game/${libraryItemId}`, {
         method: "DELETE",
         headers: authHeaders
       });
